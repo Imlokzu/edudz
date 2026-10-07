@@ -17,8 +17,10 @@ class AssistantEvent {
 Stream<AssistantEvent> decodeAssistantStream(Stream<List<int>> stream) async* {
   var event = 'message';
   final data = <String>[];
-  await for (final line
-      in stream.transform(utf8.decoder).transform(const LineSplitter())) {
+  await for (final line in stream
+      .cast<List<int>>()
+      .transform(utf8.decoder)
+      .transform(const LineSplitter())) {
     if (line.startsWith('event:')) {
       event = line.substring(6).trim();
     } else if (line.startsWith('data:')) {

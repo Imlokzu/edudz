@@ -60,3 +60,14 @@ only credentials and session token use encrypted platform storage.
 - Real school PDF (366194 bytes) was fetched and read by the assistant; its final
   Ukrainian explanation arrived as 106 stream events. Private test data stays out
   of the repository. Large/scanned attachments can take longer to analyze.
+
+## 2.1.1 — actual Dio stream decoder fix
+
+The old SSE test supplied Stream<List<int>>, while Dio returns Stream<Uint8List>.
+Dart's runtime generic checks rejected Utf8Decoder when the actual typed byte
+stream reached Stream.transform; the server then observed a canceled request.
+The decoder now casts the stream to List<int> before UTF-8 conversion.
+A regression test uses actual Uint8List chunks, split Unicode and keepalives.
+24 Flutter tests and clean analysis pass. A live Dart/Dio request through
+https://ep2.waveio.me for the German tomorrow-homework question received
+status, 21 token events and done. No backend or account changes are required.

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:edudz/edudz/controller.dart';
@@ -67,6 +68,21 @@ void main() {
     expect(events.map((e) => e.type), ['token', 'done']);
     expect(events.first.data['text'], 'Привіт');
   });
+  test('Dio Uint8List stream decodes UTF-8, keepalives and completion',
+      () async {
+    final payload = utf8.encode(
+        'event: status\r\ndata: {"text":"Читаю…"}\r\n\r\n: keepalive\r\n\r\nevent: token\r\ndata: {"text":"Завтра"}\r\n\r\nevent: done\r\ndata: {"ok":true}\r\n\r\n');
+    final source = Stream<Uint8List>.fromIterable([
+      Uint8List.fromList(payload.sublist(0, 35)),
+      Uint8List.fromList(payload.sublist(35, 38)),
+      Uint8List.fromList(payload.sublist(38)),
+    ]);
+    final events = await decodeAssistantStream(source).toList();
+    expect(events.map((event) => event.type), ['status', 'token', 'done']);
+    expect(events[1].data['text'], 'Завтра');
+    expect(events.last.data['ok'], true);
+  });
+
   testWidgets('Username and password can be submitted without a school address',
       (tester) async {
     final c = LoginSpy()..initializing = false;
