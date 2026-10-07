@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:edudz/message.dart';
@@ -6,6 +7,7 @@ import 'controller.dart';
 import 'theme.dart';
 import 'details.dart';
 import 'assistant.dart';
+import 'school_day.dart';
 
 class EdudzShell extends StatefulWidget {
   const EdudzShell({super.key, required this.controller});
@@ -14,7 +16,8 @@ class EdudzShell extends StatefulWidget {
   State<EdudzShell> createState() => _EdudzShellState();
 }
 
-class _EdudzShellState extends State<EdudzShell> {
+class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
+  Timer? _schoolClock;
   int tab = 0;
   bool showDone = false;
   TaskEntry? selectedTask;
@@ -23,10 +26,40 @@ class _EdudzShellState extends State<EdudzShell> {
   String t(String uk, String en, [String? de]) => c.tr(uk, en, de);
   String date(DateTime value, [String pattern = 'd MMM']) =>
       DateFormat(pattern, c.language).format(value);
-  void changeTab(int value) {
-    if (value == 0 && !DateUtils.isSameDay(c.selectedDate, DateTime.now())) {
-      c.selectDay(DateTime.now());
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _startClock();
+  }
+
+  void _startClock() {
+    _schoolClock?.cancel();
+    _schoolClock = Timer.periodic(const Duration(seconds: 1), (_) {
+      c.tickSchoolClock();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      c.tickSchoolClock();
+      _startClock();
+      c.refresh();
+    } else {
+      _schoolClock?.cancel();
     }
+  }
+
+  @override
+  void dispose() {
+    _schoolClock?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void changeTab(int value) {
+    if (value == 0) c.showHomeDay();
     setState(() {
       tab = value;
       selectedTask = null;
@@ -267,12 +300,9 @@ class _EdudzShellState extends State<EdudzShell> {
   List<Widget> _home(BuildContext context) {
     final pending =
         c.tasks.where((task) => !c.completed.contains(task.id)).toList();
-    final today = DateUtils.isSameDay(c.selectedDate, DateTime.now());
-    final now = DateFormat('HH:mm').format(DateTime.now());
-    final future = c.lessons.where((l) => l.end.compareTo(now) > 0).toList();
-    final next = today && future.isNotEmpty ? future.first : null;
+    final lessons = c.homeLessons;
     return [
-      Text(date(DateTime.now(), 'EEEE, d MMMM'),
+      Text(date(c.today, 'EEEE, d MMMM'),
           style: Theme.of(context)
               .textTheme
               .bodySmall
@@ -289,81 +319,18 @@ class _EdudzShellState extends State<EdudzShell> {
               'Alles für einen entspannten Schultag.'),
           style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 26),
-      Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-              color: forest, borderRadius: BorderRadius.circular(28)),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(
-                  width: 7,
-                  height: 7,
-                  decoration:
-                      const BoxDecoration(color: mint, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text(
-                      next == null
-                          ? t('ТВІЙ ДЕНЬ', 'YOUR DAY', 'DEIN TAG')
-                          : next.start.compareTo(now) <= 0
-                              ? t('ЗАРАЗ НА УРОЦІ', 'IN CLASS NOW',
-                                  'JETZT IM UNTERRICHT')
-                              : t('НАСТУПНИЙ УРОК', 'UP NEXT', 'ALS NÄCHSTES'),
-                      style: const TextStyle(
-                          color: mint,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5))),
-              const Icon(Icons.north_east_rounded, color: mint, size: 22),
-            ]),
-            const SizedBox(height: 18),
-            Text(
-                next?.subject ??
-                    (c.lessons.isEmpty
-                        ? t('Час для себе.', 'Time for yourself.',
-                            'Zeit für dich.')
-                        : t('На сьогодні все.', 'That’s a wrap.',
-                            'Für heute geschafft.')),
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 29,
-                    letterSpacing: -.9,
-                    fontWeight: FontWeight.w700)),
-            const SizedBox(height: 14),
-            Wrap(spacing: 18, runSpacing: 10, children: [
-              _heroLabel(
-                  Icons.schedule,
-                  next == null
-                      ? '${c.lessons.length} ${t('уроків', 'lessons', 'Stunden')}'
-                      : '${next.start} — ${next.end}'),
-              if (next != null && next.room.isNotEmpty)
-                _heroLabel(Icons.location_on_outlined,
-                    '${t('Каб.', 'Room', 'Raum')} ${next.room}')
-              else
-                _heroLabel(Icons.check_circle_outline,
-                    '${pending.length} ${t('завдань', 'tasks', 'Aufgaben')}'),
-            ]),
-            const SizedBox(height: 18),
-            Container(height: 1, color: Colors.white.withValues(alpha: .18)),
-            const SizedBox(height: 14),
-            Text(
-                next?.teacher ??
-                    t(
-                        'Твій розклад завжди під рукою.',
-                        'Your timetable is always close by.',
-                        'Dein Stundenplan ist immer dabei.'),
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: .75), fontSize: 12)),
-          ])),
+      _schoolStatus(context),
       const SizedBox(height: 24),
       Row(children: [
         Expanded(
             child: _stat(
                 context,
                 Icons.menu_book_outlined,
-                '${c.lessons.length}',
-                t('Уроків сьогодні', 'Lessons today', 'Stunden heute'),
+                '${lessons.length}',
+                c.showingNextDay
+                    ? t('Наступного дня', 'Next school day',
+                        'Nächster Schultag')
+                    : t('Уроків сьогодні', 'Lessons today', 'Stunden heute'),
                 () => changeTab(1))),
         const SizedBox(width: 12),
         Expanded(
@@ -375,10 +342,19 @@ class _EdudzShellState extends State<EdudzShell> {
                 () => changeTab(2)))
       ]),
       const SizedBox(height: 28),
-      _section(t('Твій розклад', 'Your schedule', 'Dein Stundenplan'),
-          () => changeTab(1)),
+      _section(
+          c.showingNextDay
+              ? t('Наступний навчальний день', 'Next school day',
+                  'Nächster Schultag')
+              : t('Твій розклад', 'Your schedule', 'Dein Stundenplan'), () {
+        c.showHomeDay();
+        changeTab(1);
+      }),
+      if (c.showingNextDay)
+        Text(date(c.homeDate, 'EEEE, d MMMM'),
+            style: Theme.of(context).textTheme.bodyMedium),
       const SizedBox(height: 10),
-      ..._lessonList(context, limit: 3),
+      ..._lessonList(context, items: lessons),
       const SizedBox(height: 22),
       _section(t('Що на завтра?', 'What’s next?', 'Was steht an?'),
           () => changeTab(2)),
@@ -395,11 +371,127 @@ class _EdudzShellState extends State<EdudzShell> {
     ];
   }
 
+  Widget _schoolStatus(BuildContext context) => ValueListenableBuilder<
+          DateTime>(
+      valueListenable: c.clock,
+      builder: (context, _, child) {
+        final now = c.schoolNow;
+        final state = c.schoolState;
+        final nextDay = c.showingNextDay;
+        final displayed = schoolDayState(c.dayFor(c.homeDate), now);
+        final current = state.current;
+        final next = state.next;
+        final title = switch (state.phase) {
+          SchoolPhase.lesson => current?.subject?.name ?? '—',
+          SchoolPhase.breakTime => isFreeSchoolGap(c.dayFor(c.today), now)
+              ? t('Вільний час', 'Free period', 'Freistunde')
+              : t('Перерва', 'Break', 'Pause'),
+          SchoolPhase.beforeSchool =>
+            '${t('Школа починається о', 'School starts at', 'Schule beginnt um')} ${state.next?.startTime}',
+          SchoolPhase.afterSchool => t('Школу на сьогодні завершено',
+              'School is finished for today', 'Schule für heute beendet'),
+          SchoolPhase.noSchool => t('Сьогодні уроків немає', 'No school today',
+              'Heute kein Unterricht'),
+        };
+        final phaseLabel = switch (state.phase) {
+          SchoolPhase.lesson =>
+            '${t('УРОК', 'LESSON', 'STUNDE')} ${current?.period ?? ''}',
+          SchoolPhase.breakTime => isFreeSchoolGap(c.dayFor(c.today), now)
+              ? t('ВІЛЬНИЙ ЧАС', 'FREE PERIOD', 'FREISTUNDE')
+              : t('ПЕРЕРВА', 'BREAK', 'PAUSE'),
+          SchoolPhase.beforeSchool =>
+            t('ДО ПОЧАТКУ ШКОЛИ', 'BEFORE SCHOOL', 'VOR SCHULBEGINN'),
+          SchoolPhase.afterSchool =>
+            t('НА СЬОГОДНІ ВСЕ', 'ALL DONE TODAY', 'FÜR HEUTE GESCHAFFT'),
+          SchoolPhase.noSchool =>
+            t('ВІЛЬНИЙ ДЕНЬ', 'DAY OFF', 'UNTERRICHTSFREI'),
+        };
+        final countdown = nextDay ? displayed : state;
+        final countdownLabel = nextDay ||
+                state.phase == SchoolPhase.beforeSchool
+            ? t('До початку школи', 'Until school starts', 'Bis Schulbeginn')
+            : state.phase == SchoolPhase.breakTime
+                ? t('До наступного уроку', 'Until the next lesson',
+                    'Bis zur nächsten Stunde')
+                : t('До кінця уроку', 'Until the lesson ends',
+                    'Bis Stundenende');
+        return Container(
+            key: const ValueKey('school-status'),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+                color: forest, borderRadius: BorderRadius.circular(28)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(phaseLabel,
+                  style: const TextStyle(
+                      color: mint,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5)),
+              const SizedBox(height: 14),
+              Text(title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 29,
+                      letterSpacing: -.9,
+                      fontWeight: FontWeight.w700)),
+              if (state.phase == SchoolPhase.lesson) ...[
+                const SizedBox(height: 12),
+                _heroLabel(Icons.schedule,
+                    '${current!.startTime} — ${current.endTime}'),
+                if (current.classrooms.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _heroLabel(Icons.location_on_outlined,
+                      '${t('Каб.', 'Room', 'Raum')} ${current.classrooms.map((r) => r.name).join(', ')}'),
+                ],
+              ],
+              if (state.phase == SchoolPhase.breakTime && next != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                    '${t('Далі', 'Next', 'Danach')}: ${next.period}. ${next.subject?.name ?? ''} · ${next.startTime}',
+                    style: const TextStyle(color: mint, fontSize: 14)),
+              ],
+              if (nextDay) ...[
+                const SizedBox(height: 14),
+                Text(
+                    '${t('Наступний навчальний день', 'Next school day', 'Nächster Schultag')}: ${date(c.homeDate, 'EEEE, d MMMM')} · ${displayed.next?.startTime ?? ''} — ${displayed.end == null ? '' : DateFormat('HH:mm').format(displayed.end!)}',
+                    style: const TextStyle(color: mint, fontSize: 14)),
+              ],
+              if (countdown.endsAt != null) ...[
+                const SizedBox(height: 20),
+                Text(countdownLabel,
+                    style: const TextStyle(color: mint, fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(countdownText(countdown.remainingTime(now)),
+                    key: const ValueKey('school-countdown'),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: [FontFeature.tabularFigures()])),
+              ],
+              const SizedBox(height: 18),
+              Container(height: 1, color: Colors.white.withValues(alpha: .18)),
+              const SizedBox(height: 14),
+              Text(
+                  '${t('Залишилось уроків', 'Lessons remaining', 'Verbleibende Stunden')}: ${state.remaining} / ${state.total}',
+                  style: const TextStyle(color: Colors.white, fontSize: 14)),
+              if (state.start != null && state.end != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                    '${t('Сьогодні', 'Today', 'Heute')}: ${DateFormat('HH:mm').format(state.start!)} — ${DateFormat('HH:mm').format(state.end!)}',
+                    style: const TextStyle(color: mint, fontSize: 13)),
+              ],
+            ]));
+      });
+
   Widget _heroLabel(IconData icon, String text) =>
       Row(mainAxisSize: MainAxisSize.min, children: [
         Icon(icon, color: mint, size: 17),
         const SizedBox(width: 7),
-        Text(text, style: const TextStyle(color: Colors.white, fontSize: 13))
+        Flexible(
+            child: Text(text,
+                style: const TextStyle(color: Colors.white, fontSize: 13)))
       ]);
   Widget _stat(BuildContext context, IconData icon, String number, String label,
           VoidCallback tap) =>
@@ -429,34 +521,32 @@ class _EdudzShellState extends State<EdudzShell> {
       ]);
   Widget _week() {
     final monday =
-        c.selectedDate.subtract(Duration(days: c.selectedDate.weekday - 1));
+        schoolCalendarDay(c.selectedDate, 1 - c.selectedDate.weekday);
     return Column(children: [
       Row(children: [
         IconButton(
             onPressed: c.loading
                 ? null
-                : () => c.selectDay(
-                    c.selectedDate.subtract(const Duration(days: 7))),
+                : () => c.selectDay(schoolCalendarDay(c.selectedDate, -7)),
             tooltip:
                 t('Попередній тиждень', 'Previous week', 'Vorherige Woche'),
             icon: const Icon(Icons.chevron_left)),
         Expanded(
             child: Center(
                 child: Text(
-                    '${date(monday)} — ${date(monday.add(const Duration(days: 6)))}',
+                    '${date(monday)} — ${date(schoolCalendarDay(monday, 6))}',
                     style: Theme.of(context).textTheme.titleMedium))),
         IconButton(
             onPressed: c.loading
                 ? null
-                : () =>
-                    c.selectDay(c.selectedDate.add(const Duration(days: 7))),
+                : () => c.selectDay(schoolCalendarDay(c.selectedDate, 7)),
             tooltip: t('Наступний тиждень', 'Next week', 'Nächste Woche'),
             icon: const Icon(Icons.chevron_right))
       ]),
       const SizedBox(height: 12),
       Row(
           children: List.generate(7, (i) {
-        final day = monday.add(Duration(days: i));
+        final day = schoolCalendarDay(monday, i);
         final selected = DateUtils.isSameDay(day, c.selectedDate);
         return Expanded(
             child: Padding(
@@ -497,22 +587,21 @@ class _EdudzShellState extends State<EdudzShell> {
                                 width: 4,
                                 height: 4,
                                 decoration: BoxDecoration(
-                                    color:
-                                        DateUtils.isSameDay(day, DateTime.now())
-                                            ? (selected ? mint : forest)
-                                            : Colors.transparent,
+                                    color: DateUtils.isSameDay(day, c.today)
+                                        ? (selected ? mint : forest)
+                                        : Colors.transparent,
                                     shape: BoxShape.circle)),
                           ])),
                     ))));
       })),
       TextButton(
-          onPressed: c.loading ? null : () => c.selectDay(DateTime.now()),
+          onPressed: c.loading ? null : () => c.selectDay(c.today),
           child: Text(t('До сьогодні', 'Back to today', 'Zurück zu heute'))),
     ]);
   }
 
-  List<Widget> _lessonList(BuildContext context, {int? limit}) {
-    final lessons = limit == null ? c.lessons : c.lessons.take(limit).toList();
+  List<Widget> _lessonList(BuildContext context, {List<LessonEntry>? items}) {
+    final lessons = items ?? c.lessons;
     if (lessons.isEmpty) {
       return [
         _empty(
@@ -521,57 +610,93 @@ class _EdudzShellState extends State<EdudzShell> {
                 'An diesem Tag kein Unterricht.'))
       ];
     }
-    return lessons.asMap().entries.map((entry) {
-      final l = entry.value;
-      return Padding(
+    final rows = <Widget>[];
+    for (var i = 0; i < lessons.length; i++) {
+      final l = lessons[i];
+      if (i > 0) {
+        final end = clockMinutes(lessons[i - 1].end)!;
+        final start = clockMinutes(l.start)!;
+        if (start > end) {
+          final lessonDate =
+              DateTime.tryParse(l.original?.date ?? '') ?? c.selectedDate;
+          final free =
+              gapContainsPeriod(end, start, c.dayFor(lessonDate).periods);
+          rows.add(Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Row(children: [
+                Icon(free ? Icons.hourglass_empty : Icons.coffee_outlined,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text(
+                        '${free ? t('Вільний час', 'Free period', 'Freistunde') : t('Перерва', 'Break', 'Pause')} · ${start - end} ${t('хв', 'min', 'Min.')} · ${lessons[i - 1].end} — ${l.start}',
+                        style: Theme.of(context).textTheme.bodySmall)),
+              ])));
+        }
+      }
+      rows.add(Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Surface(
               onTap: () => _lessonDetail(l),
               child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    SizedBox(
-                        width: 47,
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l.start,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 3),
-                              Text(l.end,
-                                  style: Theme.of(context).textTheme.bodySmall)
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                            width: 48,
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${l.original?.period ?? i + 1}.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge),
+                                  const SizedBox(height: 6),
+                                  Text(l.start,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.w700)),
+                                  Text(l.end,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall),
+                                ])),
+                        const SizedBox(width: 12),
+                        Container(
+                            width: 3,
+                            height: 48,
+                            decoration: BoxDecoration(
+                                color: [
+                                  const Color(0xFF92AC7B),
+                                  const Color(0xFFE4B980),
+                                  const Color(0xFF96B8CA)
+                                ][i % 3],
+                                borderRadius: BorderRadius.circular(5))),
+                        const SizedBox(width: 14),
+                        Expanded(
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                              Text(l.subject,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium),
+                              const SizedBox(height: 4),
+                              Text(l.teacher,
+                                  style: Theme.of(context).textTheme.bodySmall),
+                              if (l.room.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text('${t('Каб.', 'Room', 'Raum')} ${l.room}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                              ],
                             ])),
-                    const SizedBox(width: 12),
-                    Container(
-                        width: 3,
-                        height: 42,
-                        decoration: BoxDecoration(
-                            color: [
-                              const Color(0xFF92AC7B),
-                              const Color(0xFFE4B980),
-                              const Color(0xFF96B8CA)
-                            ][entry.key % 3],
-                            borderRadius: BorderRadius.circular(5))),
-                    const SizedBox(width: 14),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          Text(l.subject,
-                              style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 4),
-                          Text(l.teacher,
-                              style: Theme.of(context).textTheme.bodySmall)
-                        ])),
-                    if (l.room.isNotEmpty)
-                      Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: Tag(l.room)),
-                  ]))));
-    }).toList();
+                      ])))));
+    }
+    return rows;
   }
 
   Widget _taskFilters() => Row(children: [

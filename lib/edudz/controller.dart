@@ -5,6 +5,7 @@ import 'package:html_unescape/html_unescape.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:edudz/api.dart';
 import 'package:edudz/server_config.dart';
+import 'school_day.dart';
 
 typedef LessonEntry = ({
   String subject,
@@ -65,6 +66,116 @@ String resolvedSchool(String token, String fallback) {
 DateTime? schoolDate(String value) => DateTime.tryParse(value.split(' ').first);
 
 class SchoolController extends ChangeNotifier {
+  SchoolController({DateTime Function()? nowProvider})
+      : _deviceNow = nowProvider ?? DateTime.now;
+  final DateTime Function() _deviceNow;
+  final ValueNotifier<DateTime> clock = ValueNotifier(DateTime.now());
+  DateTime? _serverWallTime, _receivedAt;
+  String _clockPhaseKey = '';
+  bool _manualDate = false;
+  bool _updatingDay = false;
+  DateTime? _lastDayCheck;
+  DateTime? _lastDayAttempt;
+  bool _disposed = false;
+
+  DateTime get schoolNow => _serverWallTime == null
+      ? _deviceNow()
+      : _serverWallTime!.add(_deviceNow().difference(_receivedAt!));
+  DateTime get today => DateUtils.dateOnly(schoolNow);
+
+  TimeTableData dayFor(DateTime date) {
+    final key = DateUtils.dateOnly(date);
+    if (demo) return _demoDay(key);
+    if (!authenticated) return TimeTableData(key, [], []);
+    return data.timetable.timetables[key] ??
+        TimeTableData(key, [], data.timetable.periods ?? []);
+  }
+
+  SchoolDayState get schoolState => schoolDayState(dayFor(today), schoolNow);
+  DateTime get homeDate {
+    final state = schoolState;
+    if (state.phase != SchoolPhase.afterSchool &&
+        state.phase != SchoolPhase.noSchool) {
+      return today;
+    }
+    for (var offset = 1; offset <= 60; offset++) {
+      final date = schoolCalendarDay(today, offset);
+      if (dayFor(date).classes.isNotEmpty) return date;
+    }
+    return today;
+  }
+
+  bool get showingNextDay => !DateUtils.isSameDay(homeDate, today);
+  List<LessonEntry> get homeLessons => _entries(dayFor(homeDate));
+
+  void tickSchoolClock() {
+    if (!authenticated || _disposed) return;
+    clock.value = schoolNow;
+    final state = schoolState;
+    final key =
+        '${today.toIso8601String()}:${state.phase}:${state.current?.period}:${homeDate.toIso8601String()}';
+    if (key != _clockPhaseKey) {
+      _clockPhaseKey = key;
+      if (!_manualDate) selectedDate = homeDate;
+      notifyListeners();
+    }
+    if (!demo &&
+        !_updatingDay &&
+        !loading &&
+        (_lastDayAttempt == null ||
+            _deviceNow().difference(_lastDayAttempt!).inSeconds >= 60) &&
+        (_lastDayCheck == null || !DateUtils.isSameDay(_lastDayCheck, today))) {
+      _updatingDay = true;
+      _lastDayAttempt = _deviceNow();
+      loadSchoolSnapshot().catchError((Object _) {}).whenComplete(() {
+        _updatingDay = false;
+      });
+    }
+  }
+
+  void showHomeDay() {
+    _manualDate = false;
+    selectedDate = homeDate;
+    notifyListeners();
+  }
+
+  Future<void> loadSchoolSnapshot() async {
+    final token = data.user.token;
+    final response = await data.dio.get('${data.baseUrl}/api/school-day',
+        options: Options(headers: {'Authorization': 'Bearer $token'}));
+    if (_disposed || !authenticated || demo || data.user.token != token) return;
+    final value = Map<String, dynamic>.from(response.data);
+    final serverTime = value['server_time'] as String;
+    _serverWallTime = DateTime.parse(serverTime.substring(0, 19));
+    _receivedAt = _deviceNow();
+    final periods = (value['periods'] as Map)
+        .values
+        .map((p) => TimeTablePeriod.fromJson(Map<String, dynamic>.from(p)))
+        .toList();
+    data.timetable.periods = periods;
+    for (final entry in (value['days'] as Map).entries) {
+      final date = DateTime.parse(entry.key as String);
+      final items = (entry.value as List)
+          .map((item) =>
+              TimeTableClass.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
+      data.timetable.timetables[DateUtils.dateOnly(date)] =
+          normalizeTimetable(TimeTableData(date, items, periods));
+    }
+    await data.timetable.saveToCache();
+    _lastDayCheck = today;
+    if (!_manualDate) selectedDate = homeDate;
+    clock.value = schoolNow;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    clock.dispose();
+    super.dispose();
+  }
+
   final EP2Data data = EP2Data.getInstance();
   bool initializing = true,
       authenticated = false,
@@ -167,10 +278,11 @@ class SchoolController extends ChangeNotifier {
       await _prefs!.remove('edudz_sync');
       completed = {};
       lastSync = null;
+      _resetClock();
       authenticated = true;
       demo = false;
       offline = false;
-      selectedDate = DateUtils.dateOnly(DateTime.now());
+      selectedDate = today;
     } on DioException catch (e) {
       error = e.response?.statusCode == 401 || e.response?.statusCode == 403
           ? tr(
@@ -237,7 +349,10 @@ class SchoolController extends ChangeNotifier {
         (
           tr('розклад', 'timetable', 'Stundenplan'),
           () async {
-            await data.timetable.loadTt(selectedDate);
+            await loadSchoolSnapshot();
+            if (!data.timetable.timetables.containsKey(selectedDate)) {
+              await data.timetable.loadTt(selectedDate);
+            }
           }
         ),
         (tr('оцінки', 'grades', 'Noten'), data.grades.loadGrades),
@@ -269,12 +384,24 @@ class SchoolController extends ChangeNotifier {
   }
 
   void enterDemo() {
+    _resetClock();
     initializing = false;
     authenticated = true;
     demo = true;
     error = null;
     completed = {};
+    selectedDate = homeDate;
     notifyListeners();
+  }
+
+  void _resetClock() {
+    _serverWallTime = null;
+    _receivedAt = null;
+    _lastDayCheck = null;
+    _lastDayAttempt = null;
+    _clockPhaseKey = '';
+    _manualDate = false;
+    clock.value = schoolNow;
   }
 
   Future<void> logout() async {
@@ -292,6 +419,7 @@ class SchoolController extends ChangeNotifier {
     }
     authenticated = false;
     demo = false;
+    _resetClock();
     completed = {};
     lastSync = null;
     error = null;
@@ -321,71 +449,72 @@ class SchoolController extends ChangeNotifier {
 
   Future<void> selectDay(DateTime value) async {
     if (loading) return;
+    _manualDate = true;
     selectedDate = DateUtils.dateOnly(value);
     notifyListeners();
     if (!demo && authenticated) await refresh();
   }
 
-  List<LessonEntry> get lessons {
-    if (demo) {
-      if (selectedDate.weekday > 5) return [];
-      return [
-        (
-          subject: tr('Математика', 'Mathematics', 'Mathematik'),
-          start: '08:00',
-          end: '08:45',
-          room: '204',
-          teacher: 'Frau Müller',
-          original: null
-        ),
-        (
-          subject: tr('Німецька мова', 'German', 'Deutsch'),
-          start: '08:55',
-          end: '09:40',
-          room: '112',
-          teacher: 'Herr Schmidt',
-          original: null
-        ),
-        (
-          subject: tr('Біологія', 'Biology', 'Biologie'),
-          start: '10:00',
-          end: '10:45',
-          room: '308',
-          teacher: 'Frau Weber',
-          original: null
-        ),
-        (
-          subject: tr('Англійська мова', 'English', 'Englisch'),
-          start: '10:55',
-          end: '11:40',
-          room: '112',
-          teacher: 'Mrs. Taylor',
-          original: null
-        ),
-        (
-          subject: tr('Історія', 'History', 'Geschichte'),
-          start: '12:00',
-          end: '12:45',
-          room: '206',
-          teacher: 'Herr Fischer',
-          original: null
-        ),
-      ];
-    }
-    final list = data.timetable.timetables[selectedDate]?.classes ?? [];
-    return list
-        .map((l) => (
-              subject: l.subject?.name ?? '—',
-              start: l.startTime,
-              end: l.endTime,
-              room: l.classrooms.map((r) => r.name).join(', '),
-              teacher: l.teachers
-                  .map((t) => '${t.firstName} ${t.lastName}'.trim())
-                  .join(', '),
-              original: l
-            ))
-        .toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
+  List<LessonEntry> get lessons => _entries(dayFor(selectedDate));
+
+  List<LessonEntry> _entries(TimeTableData day) => normalizeTimetable(day)
+      .classes
+      .map((l) => (
+            subject: l.subject?.name ?? '—',
+            start: l.startTime,
+            end: l.endTime,
+            room: l.classrooms.map((r) => r.name).join(', '),
+            teacher: l.teachers
+                .map((t) => '${t.firstName} ${t.lastName}'.trim())
+                .join(', '),
+            original: l,
+          ))
+      .toList();
+
+  TimeTableData _demoDay(DateTime date) {
+    if (date.weekday > 5) return TimeTableData(date, [], []);
+    final periods = <TimeTablePeriod>[
+      TimeTablePeriod('1', '08:00', '08:45', '1.', '1'),
+      TimeTablePeriod('2', '08:45', '09:30', '2.', '2'),
+      TimeTablePeriod('3', '09:45', '10:30', '3.', '3'),
+      TimeTablePeriod('4', '10:30', '11:15', '4.', '4'),
+      TimeTablePeriod('5', '11:30', '12:15', '5.', '5'),
+      TimeTablePeriod('6', '12:15', '13:00', '6.', '6'),
+    ];
+    TimeTableClass lesson(String id, String name, String period, String start,
+            String end, String room, String teacher) =>
+        TimeTableClass(
+          period: period,
+          startTime: start,
+          endTime: end,
+          date: date.toIso8601String().split('T').first,
+          subject: Subject(id: id, name: name, short: name, cbHidden: false),
+          classrooms: [Classroom(id: room, name: room, short: room)],
+          teachers: [
+            Teacher(
+                id: teacher,
+                firstName: teacher,
+                lastName: '',
+                short: teacher,
+                gender: '',
+                classroomId: room,
+                dateFrom: '',
+                dateTo: '',
+                isOut: false)
+          ],
+          studentIds: ['demo'],
+        );
+    final classes = [
+      lesson('math', tr('Математика', 'Mathematics', 'Mathematik'), '1',
+          '08:00', '09:30', '204', 'Frau Müller'),
+      lesson('german', tr('Німецька мова', 'German', 'Deutsch'), '3', '09:45',
+          '10:30', '112', 'Herr Schmidt'),
+      lesson('biology', tr('Біологія', 'Biology', 'Biologie'), '4', '10:30',
+          '11:15', '308', 'Frau Weber'),
+      lesson('english', tr('Англійська мова', 'English', 'Englisch'), '5',
+          '11:30', '13:00', '112', 'Mrs. Taylor'),
+    ];
+    return normalizeTimetable(TimeTableData(date, classes, periods));
   }
 
   List<TaskEntry> get tasks {

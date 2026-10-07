@@ -10,6 +10,19 @@ import 'shell.dart' show Surface;
 
 typedef AskStudy = void Function(String prompt, TaskEntry? task);
 
+Map<String, dynamic>? lessonPlanFor(List<dynamic> plans, LessonEntry lesson) {
+  final original = lesson.original;
+  final candidates = plans.whereType<Map>().where((p) =>
+      original == null || p['subjectid']?.toString() == original.subject?.id);
+  for (final start in [lesson.start, original?.blockStart]) {
+    if (start == null || start.isEmpty) continue;
+    for (final plan in candidates) {
+      if (plan['starttime'] == start) return Map<String, dynamic>.from(plan);
+    }
+  }
+  return null;
+}
+
 class DetailScreen extends StatelessWidget {
   const DetailScreen(
       {super.key,
@@ -135,20 +148,17 @@ class _DetailPaneState extends State<DetailPane> {
         await c.ensureSession();
         final r = await c.data.dio.get('${c.data.baseUrl}/api/lesson-plan',
             queryParameters: {
-              'date': DateFormat('yyyy-MM-dd').format(c.selectedDate)
+              'date': widget.lesson!.original?.date.isNotEmpty == true
+                  ? widget.lesson!.original!.date
+                  : DateFormat('yyyy-MM-dd').format(c.selectedDate)
             },
             options: Options(
                 headers: {'Authorization': 'Bearer ${c.data.user.token}'}),
             cancelToken: token);
         final plans = r.data['plan'];
         if (plans is List) {
-          final original = widget.lesson!.original;
-          final matched = plans.whereType<Map>().where((p) =>
-              p['starttime'] == widget.lesson!.start &&
-              (original == null ||
-                  p['subjectid']?.toString() == original.subject?.id));
-          if (matched.isNotEmpty && !token.isCancelled) {
-            plan = Map<String, dynamic>.from(matched.first);
+          if (!token.isCancelled) {
+            plan = lessonPlanFor(plans, widget.lesson!);
           }
         }
       }
@@ -247,6 +257,11 @@ class _DetailPaneState extends State<DetailPane> {
                 _info(Icons.event, t('Здати до', 'Due on', 'Abgabe bis'),
                     DateFormat('d MMMM', c.language).format(task!.due!)),
               if (lesson != null) ...[
+                if (lesson.original?.period.isNotEmpty ?? false)
+                  _info(
+                      Icons.format_list_numbered,
+                      t('Номер уроку', 'Lesson number', 'Stundennummer'),
+                      lesson.original!.period),
                 _info(Icons.schedule, t('Час', 'Time', 'Zeit'),
                     '${lesson.start} — ${lesson.end}'),
                 _info(Icons.location_on_outlined, t('Кабінет', 'Room', 'Raum'),

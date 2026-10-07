@@ -769,6 +769,9 @@ class TimeTablePeriod {
 class TimeTableClass {
   TimeTableClass({
     this.type = "",
+    this.blockStart = "",
+    this.blockEnd = "",
+    this.originPeriod = "",
     this.date = "",
     required this.period,
     required this.startTime,
@@ -784,6 +787,7 @@ class TimeTableClass {
   });
 
   final String type;
+  final String blockStart, blockEnd, originPeriod;
   final String date;
   final String period;
   final String startTime;
@@ -801,6 +805,9 @@ class TimeTableClass {
 
   Map<String, dynamic> toJson() => {
         'type': type,
+        'block_starttime': blockStart,
+        'block_endtime': blockEnd,
+        'origin_period': originPeriod,
         'date': date,
         'uniperiod': period,
         'starttime': startTime,
@@ -817,6 +824,9 @@ class TimeTableClass {
 
   static TimeTableClass fromJson(Map<String, dynamic> json) => TimeTableClass(
         type: json['type'],
+        blockStart: json['block_starttime'] ?? '',
+        blockEnd: json['block_endtime'] ?? '',
+        originPeriod: json['origin_period'] ?? '',
         date: json['date'],
         period: json['uniperiod'],
         startTime: json['starttime'],

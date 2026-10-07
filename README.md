@@ -22,6 +22,11 @@ refresh your data, or sign out.
 ## What's in this fork
 
 - Redesigned Today, Schedule, Tasks, Grades and Inbox screens.
+- Double lessons appear as separate 45-minute periods with their real numbers.
+- A live lesson/break countdown, lessons remaining, and school start/end times.
+- The full day timetable with actual breaks and free periods between lessons.
+- After school, Today automatically shows the next actual school day, skipping
+  weekends and holidays published by the school. Manual timetable browsing stays available.
 - Tablet navigation rail and a detail panel beside the timetable/homework list.
 - Tap lessons for the room, teachers, class/group, published topic and related tasks.
 - Full homework material cards, PDF/image/text previews and Office text previews.
@@ -92,12 +97,22 @@ are at `~/edupage2/server` and `~/edupage2/SETUP.md`.
 
 ## Validation
 
-23 widget/unit tests cover optional-school login, token school discovery, tablet
+32 widget/unit tests cover optional-school login, token school discovery, tablet
 master/detail navigation, e-test/attachment parsing, UTF-8 streaming, form validation,
 school-host normalization, secure storage,
 demo navigation, completing tasks, theme switching, sign-out and compact-screen
-layouts at enlarged text size. The Android integration test lives in
-`integration_test/app_test.dart`.
+layouts at enlarged text size, double lessons, exact bell boundaries, free periods,
+next-day/holiday selection, clock changes and topic lookup in a double lesson.
+Android integration tests live in `integration_test/`; the school-day scenario
+also captures demo screenshots on phone and tablet:
+
+```sh
+flutter drive --driver=test_driver/school_day.dart --target=integration_test/school_day_test.dart -d YOUR_EMULATOR
+```
+
+The clock follows authenticated server school time while connected. Cached
+timetables and countdowns remain usable offline; refresh when the school changes
+its schedule. The backend searches up to 60 days ahead for the next school day.
 
 This release targets Android. iOS, desktop and web platform directories are
 inherited from upstream and are not release-validated here. Push notifications
