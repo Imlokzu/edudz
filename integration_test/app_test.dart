@@ -12,7 +12,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('edudz'), findsOneWidget);
     for (var i = 1; i < 5; i++) {
-      await tester.tap(find.byType(NavigationDestination).at(i));
+      if (find.byType(NavigationRail).evaluate().isNotEmpty) {
+        final icons = [
+          Icons.grid_view_rounded,
+          Icons.calendar_today_outlined,
+          Icons.check_circle_outline,
+          Icons.bar_chart_rounded,
+          Icons.chat_bubble_outline
+        ];
+        await tester.tap(find.byIcon(icons[i]).first);
+      } else {
+        await tester.tap(find.byType(NavigationDestination).at(i));
+      }
       await tester.pumpAndSettle();
       expect(tester.takeException(), null);
     }

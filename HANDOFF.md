@@ -41,3 +41,22 @@ as part of a cosmetic app change. Moving to the WSL2 server is separate work.
 Android is the validated release platform. Inherited iOS/desktop/web directories
 are not release-validated. Local caches of school data use SharedPreferences;
 only credentials and session token use encrypted platform storage.
+
+## 2.1 update — tablet, materials and assistant
+
+- Optional school field; the signed server token supplies the detected school.
+- Navigation rail at 700px; lesson/homework detail pane at 1000px.
+- Lesson room/teachers/class/group, published curriculum and related homework.
+- Material cards and authenticated attachment previews; Android MediaStore downloads.
+- A real streaming assistant with stop/retry, source-file chips and read-only tools.
+- Server fork: https://github.com/Imlokzu/edudz-server, local ~/edupage2/server.
+- Private model config: ~/.config/edudz-ai/config.json (0600), existing NVIDIA account.
+  Main: Llama 3.2 90B; image transcription: Llama 3.2 11B. No key in the APK.
+- PDFKit helper: tools/pdf-preview.swift, compiled to ~/.config/edudz-ai/pdf-preview.
+- SSE keepalives and a three-minute stream receive timeout cover scanned-file reads.
+- Latest checks: 23 Flutter tests, clean analysis, Android tablet integration,
+  native PDF preview and actual Downloads file creation; Go feature/race tests.
+- Real automatic school login and lesson-plan endpoint verified on the public server.
+- Real school PDF (366194 bytes) was fetched and read by the assistant; its final
+  Ukrainian explanation arrived as 106 stream events. Private test data stays out
+  of the repository. Large/scanned attachments can take longer to analyze.

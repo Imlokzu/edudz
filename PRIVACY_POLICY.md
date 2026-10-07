@@ -17,3 +17,16 @@ trust them with your EduPage account.
 
 The current backend is hosted on our Mac; it can be unavailable while that
 machine sleeps or loses its internet connection. Cached data remains available.
+
+## School assistant
+
+When you ask the assistant, the server reads relevant data from your authenticated
+school session and sends it together with your chat messages to the configured
+model API. The current installation uses NVIDIA NIM. This can include timetable,
+room/teacher names, assignments, grades, messages and selected attachment text or
+page images. School passwords and the server's model key are not sent as context.
+The model API's own data policies apply. The assistant has read-only school tools.
+
+Downloaded attachment copies are cached in the app's private temporary directory.
+Files explicitly saved to Downloads remain on the device after sign-out or app
+removal. Office previews show text, not the document's full original layout.

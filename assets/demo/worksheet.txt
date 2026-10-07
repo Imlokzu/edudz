@@ -1,0 +1,6 @@
+Quadratic equations
+
+1. Solve x^2 - 5x + 6 = 0.
+2. Solve x^2 + 4x + 4 = 0.
+
+Show each step and check the solutions.

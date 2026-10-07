@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:edudz/message.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'controller.dart';
 import 'theme.dart';
+import 'details.dart';
+import 'assistant.dart';
 
 class EdudzShell extends StatefulWidget {
   const EdudzShell({super.key, required this.controller});
@@ -16,6 +17,8 @@ class EdudzShell extends StatefulWidget {
 class _EdudzShellState extends State<EdudzShell> {
   int tab = 0;
   bool showDone = false;
+  TaskEntry? selectedTask;
+  LessonEntry? selectedLesson;
   SchoolController get c => widget.controller;
   String t(String uk, String en, [String? de]) => c.tr(uk, en, de);
   String date(DateTime value, [String pattern = 'd MMM']) =>
@@ -24,7 +27,11 @@ class _EdudzShellState extends State<EdudzShell> {
     if (value == 0 && !DateUtils.isSameDay(c.selectedDate, DateTime.now())) {
       c.selectDay(DateTime.now());
     }
-    setState(() => tab = value);
+    setState(() {
+      tab = value;
+      selectedTask = null;
+      selectedLesson = null;
+    });
   }
 
   @override
@@ -40,12 +47,13 @@ class _EdudzShellState extends State<EdudzShell> {
       t('Оцінки', 'Grades', 'Noten'),
       t('Вхідні', 'Inbox', 'Nachrichten')
     ];
-    return Scaffold(
-      body: SafeArea(
+    return LayoutBuilder(builder: (context, layout) {
+      final tablet = layout.maxWidth >= 700;
+      final content = SafeArea(
           bottom: false,
           child: Center(
               child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
+            constraints: const BoxConstraints(maxWidth: 1200),
             child: Column(children: [
               Padding(
                   padding: const EdgeInsets.fromLTRB(24, 18, 20, 12),
@@ -138,28 +146,94 @@ class _EdudzShellState extends State<EdudzShell> {
                         ],
                       ))),
             ]),
-          ))),
-      bottomNavigationBar: NavigationBar(
-          selectedIndex: tab,
-          onDestinationSelected: changeTab,
-          destinations: [
-            NavigationDestination(
-                icon: const Icon(Icons.grid_view_rounded),
-                label: t('Сьогодні', 'Today', 'Heute')),
-            NavigationDestination(
-                icon: const Icon(Icons.calendar_today_outlined),
-                label: t('Розклад', 'Schedule', 'Plan')),
-            NavigationDestination(
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: t('Завдання', 'Tasks', 'Aufgaben')),
-            NavigationDestination(
-                icon: const Icon(Icons.bar_chart_rounded),
-                label: t('Оцінки', 'Grades', 'Noten')),
-            NavigationDestination(
-                icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: t('Вхідні', 'Inbox', 'Postfach')),
-          ]),
-    );
+          )));
+      return Scaffold(
+        body: tablet
+            ? Row(children: [
+                SafeArea(
+                    child: NavigationRail(
+                  extended: layout.maxWidth >= 1100,
+                  selectedIndex: tab,
+                  onDestinationSelected: changeTab,
+                  leading: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 18),
+                      child: BrandMark(size: 42)),
+                  trailing: Padding(
+                      padding: const EdgeInsets.only(top: 24),
+                      child: IconButton.filledTonal(
+                          onPressed: () => _assistant(),
+                          tooltip: t('Асистент', 'Assistant', 'Assistent'),
+                          icon: const Icon(Icons.auto_awesome))),
+                  destinations: [
+                    NavigationRailDestination(
+                        icon: const Icon(Icons.grid_view_rounded),
+                        label: Text(t('Сьогодні', 'Today', 'Heute'))),
+                    NavigationRailDestination(
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        label: Text(t('Розклад', 'Schedule', 'Plan'))),
+                    NavigationRailDestination(
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: Text(t('Завдання', 'Tasks', 'Aufgaben'))),
+                    NavigationRailDestination(
+                        icon: const Icon(Icons.bar_chart_rounded),
+                        label: Text(t('Оцінки', 'Grades', 'Noten'))),
+                    NavigationRailDestination(
+                        icon: const Icon(Icons.chat_bubble_outline),
+                        label: Text(t('Вхідні', 'Inbox', 'Postfach'))),
+                  ],
+                )),
+                const VerticalDivider(width: 1),
+                Expanded(child: content),
+                if (layout.maxWidth >= 1000 &&
+                    (selectedTask != null || selectedLesson != null)) ...[
+                  const VerticalDivider(width: 1),
+                  SizedBox(
+                      width: layout.maxWidth >= 1300 ? 420 : 360,
+                      child: SafeArea(
+                          child: DetailPane(
+                        controller: c,
+                        task: selectedTask,
+                        lesson: selectedLesson,
+                        onClose: () => setState(() {
+                          selectedTask = null;
+                          selectedLesson = null;
+                        }),
+                        onAsk: (prompt, task) =>
+                            _assistant(prompt: prompt, task: task),
+                      ))),
+                ],
+              ])
+            : content,
+        bottomNavigationBar: tablet
+            ? null
+            : NavigationBar(
+                selectedIndex: tab,
+                onDestinationSelected: changeTab,
+                destinations: [
+                    NavigationDestination(
+                        icon: const Icon(Icons.grid_view_rounded),
+                        label: t('Сьогодні', 'Today', 'Heute')),
+                    NavigationDestination(
+                        icon: const Icon(Icons.calendar_today_outlined),
+                        label: t('Розклад', 'Schedule', 'Plan')),
+                    NavigationDestination(
+                        icon: const Icon(Icons.check_circle_outline_rounded),
+                        label: t('Завдання', 'Tasks', 'Aufgaben')),
+                    NavigationDestination(
+                        icon: const Icon(Icons.bar_chart_rounded),
+                        label: t('Оцінки', 'Grades', 'Noten')),
+                    NavigationDestination(
+                        icon: const Icon(Icons.chat_bubble_outline_rounded),
+                        label: t('Вхідні', 'Inbox', 'Postfach')),
+                  ]),
+        floatingActionButton: tablet
+            ? null
+            : FloatingActionButton.small(
+                onPressed: () => _assistant(),
+                tooltip: t('Асистент', 'Assistant', 'Assistent'),
+                child: const Icon(Icons.auto_awesome)),
+      );
+    });
   }
 
   Widget _notice() {
@@ -452,6 +526,7 @@ class _EdudzShellState extends State<EdudzShell> {
       return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Surface(
+              onTap: () => _lessonDetail(l),
               child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(children: [
@@ -590,65 +665,48 @@ class _EdudzShellState extends State<EdudzShell> {
                     ]))));
   }
 
-  void _taskDetail(TaskEntry task) => showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-          child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 10, 24, 28),
-              child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Tag(task.subject),
-                    const SizedBox(height: 16),
-                    Text(task.title,
-                        style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 14),
-                    if (task.due != null)
-                      Text(
-                          '${t('Здати до', 'Due on', 'Abgabe bis')} ${date(task.due!, 'd MMMM')}',
-                          style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 22),
-                    SelectableText(task.details.isEmpty
-                        ? t(
-                            'Додаткового опису немає.',
-                            'No additional description.',
-                            'Keine weitere Beschreibung.')
-                        : task.details),
-                    const SizedBox(height: 24),
-                    Text(
-                        t(
-                            'Позначка виконання зберігається на цьому пристрої.',
-                            'Completion is saved on this device.',
-                            'Der Erledigt-Status wird auf diesem Gerät gespeichert.'),
-                        style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                            onPressed: () {
-                              c.toggleTask(task.id);
-                              Navigator.pop(context);
-                            },
-                            icon: const Icon(Icons.done),
-                            label: Text(c.completed.contains(task.id)
-                                ? t('Повернути до завдань', 'Mark as to do',
-                                    'Als offen markieren')
-                                : t('Позначити готовим', 'Mark as done',
-                                    'Als erledigt markieren')))),
-                    if (!c.demo)
-                      TextButton.icon(
-                          onPressed: () => launchUrl(
-                              Uri.https('${c.school}.edupage.org', '/'),
-                              mode: LaunchMode.externalApplication),
-                          icon: const Icon(Icons.open_in_new, size: 16),
-                          label: Text(t(
-                              'Відкрити школу в EduPage',
-                              'Open school in EduPage',
-                              'Schule in EduPage öffnen'))),
-                  ]))));
+  void _assistant({String? prompt, TaskEntry? task}) => Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => AssistantScreen(
+              controller: c, initialPrompt: prompt, task: task)));
+
+  void _taskDetail(TaskEntry task) {
+    if (MediaQuery.sizeOf(context).width >= 1000) {
+      setState(() {
+        selectedTask = task;
+        selectedLesson = null;
+      });
+    } else {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => DetailScreen(
+                  controller: c,
+                  task: task,
+                  onAsk: (prompt, task) =>
+                      _assistant(prompt: prompt, task: task))));
+    }
+  }
+
+  void _lessonDetail(LessonEntry lesson) {
+    if (MediaQuery.sizeOf(context).width >= 1000) {
+      setState(() {
+        selectedLesson = lesson;
+        selectedTask = null;
+      });
+    } else {
+      Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => DetailScreen(
+                  controller: c,
+                  lesson: lesson,
+                  onAsk: (prompt, task) =>
+                      _assistant(prompt: prompt, task: task))));
+    }
+  }
+
   List<Widget> _gradeList(BuildContext context) {
     if (c.grades.isEmpty) {
       return [
@@ -912,15 +970,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                       keyboardType: TextInputType.url,
                                       autocorrect: false,
                                       decoration: InputDecoration(
-                                          labelText:
-                                              t('Школа', 'School', 'Schule'),
+                                          labelText: t(
+                                              'Школа (необов’язково)',
+                                              'School (optional)',
+                                              'Schule (optional)'),
                                           hintText: 'school.edupage.org',
                                           prefixIcon: const Icon(
                                               Icons.school_outlined)),
-                                      validator: (v) => schoolSubdomain(v ?? '')
-                                              .isEmpty
+                                      validator: (v) => (v ?? '')
+                                                  .trim()
+                                                  .isNotEmpty &&
+                                              schoolSubdomain(v ?? '').isEmpty
                                           ? t(
-                                              'Вкажіть адресу вашої школи',
+                                              'Перевірте адресу вашої школи',
                                               'Enter your school’s EduPage address',
                                               'EduPage-Adresse deiner Schule eingeben')
                                           : null),

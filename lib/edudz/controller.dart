@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:html_unescape/html_unescape.dart';
@@ -10,7 +11,8 @@ typedef LessonEntry = ({
   String start,
   String end,
   String room,
-  String teacher
+  String teacher,
+  TimeTableClass? original
 });
 typedef TaskEntry = ({
   String id,
@@ -45,6 +47,19 @@ String schoolSubdomain(String input) {
       .first;
   value = value.replaceFirst(RegExp(r'\.edupage\.org$'), '');
   return RegExp(r'^[a-z0-9][a-z0-9-]*$').hasMatch(value) ? value : '';
+}
+
+String resolvedSchool(String token, String fallback) {
+  try {
+    final part = token.split('.')[1];
+    final payload =
+        jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(part))));
+    final school = schoolSubdomain(payload['server']?.toString() ?? '');
+    if (school.isNotEmpty) return school;
+  } catch (_) {
+    /* The fallback supports older backends without a server claim. */
+  }
+  return schoolSubdomain(fallback);
 }
 
 DateTime? schoolDate(String value) => DateTime.tryParse(value.split(' ').first);
@@ -133,7 +148,7 @@ class SchoolController extends ChangeNotifier {
       final account = User(
           username: username.trim(),
           password: password,
-          server: schoolSubdomain(school))
+          server: resolvedSchool(response.data['token'], school))
         ..token = response.data['token']
         ..name = response.data['name'] ?? '';
       // Remove the previous account's school data before saving a new identity.
@@ -176,6 +191,15 @@ class SchoolController extends ChangeNotifier {
       notifyListeners();
     }
     if (authenticated) await refresh();
+  }
+
+  Future<void> ensureSession() async {
+    if (demo) return;
+    if (!authenticated) throw StateError('Sign-in required');
+    if (await data.user.validate()) return;
+    if (!await data.user.login()) {
+      throw StateError('Could not restore school session');
+    }
   }
 
   Future<void> refresh() async {
@@ -311,35 +335,40 @@ class SchoolController extends ChangeNotifier {
           start: '08:00',
           end: '08:45',
           room: '204',
-          teacher: 'Frau Müller'
+          teacher: 'Frau Müller',
+          original: null
         ),
         (
           subject: tr('Німецька мова', 'German', 'Deutsch'),
           start: '08:55',
           end: '09:40',
           room: '112',
-          teacher: 'Herr Schmidt'
+          teacher: 'Herr Schmidt',
+          original: null
         ),
         (
           subject: tr('Біологія', 'Biology', 'Biologie'),
           start: '10:00',
           end: '10:45',
           room: '308',
-          teacher: 'Frau Weber'
+          teacher: 'Frau Weber',
+          original: null
         ),
         (
           subject: tr('Англійська мова', 'English', 'Englisch'),
           start: '10:55',
           end: '11:40',
           room: '112',
-          teacher: 'Mrs. Taylor'
+          teacher: 'Mrs. Taylor',
+          original: null
         ),
         (
           subject: tr('Історія', 'History', 'Geschichte'),
           start: '12:00',
           end: '12:45',
           room: '206',
-          teacher: 'Herr Fischer'
+          teacher: 'Herr Fischer',
+          original: null
         ),
       ];
     }
@@ -352,7 +381,8 @@ class SchoolController extends ChangeNotifier {
               room: l.classrooms.map((r) => r.name).join(', '),
               teacher: l.teachers
                   .map((t) => '${t.firstName} ${t.lastName}'.trim())
-                  .join(', ')
+                  .join(', '),
+              original: l
             ))
         .toList()
       ..sort((a, b) => a.start.compareTo(b.start));

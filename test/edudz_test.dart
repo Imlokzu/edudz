@@ -55,7 +55,7 @@ void main() {
     await tester.ensureVisible(find.text('Увійти'));
     await tester.tap(find.text('Увійти'));
     await tester.pumpAndSettle();
-    expect(find.text('Вкажіть адресу вашої школи'), findsOneWidget);
+    expect(find.text('Перевірте адресу вашої школи'), findsNothing);
     expect(find.text('Введіть логін'), findsOneWidget);
     expect(find.text('Введіть пароль'), findsOneWidget);
     expect(c.loading, false);
@@ -63,6 +63,10 @@ void main() {
   testWidgets(
       'Demo navigates all tabs, completes homework, changes theme and exits',
       (tester) async {
+    tester.view.physicalSize = const Size(440, 860);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final c = SchoolController()..enterDemo();
     c.selectedDate = DateTime(2026, 10, 7);
     await tester.pumpWidget(MyApp(controller: c));
