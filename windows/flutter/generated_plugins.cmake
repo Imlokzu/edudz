@@ -5,9 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   connectivity_plus
-  dynamic_color
-  firebase_core
-  sentry_flutter
+  flutter_secure_storage_windows
   url_launcher_windows
 )
 

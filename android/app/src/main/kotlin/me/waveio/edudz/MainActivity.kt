@@ -1,4 +1,4 @@
-package com.vypal.eduapge2
+package me.waveio.edudz
 
 import io.flutter.embedding.android.FlutterActivity
 

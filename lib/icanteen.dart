@@ -1,13 +1,12 @@
+import 'package:edudz/server_config.dart';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:eduapge2/main.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 import 'package:toastification/toastification.dart';
 
 class ICanteenPage extends StatefulWidget {
@@ -146,7 +145,7 @@ class ICanteenManager {
   static ICanteenManager? _instance;
 
   ICanteenData data = ICanteenData(days: [], credit: "");
-  String baseUrl = FirebaseRemoteConfig.instance.getString("testUrl");
+  String baseUrl = ep2ServerUrl;
 
   // Private constructor
   ICanteenManager._privateConstructor() {
@@ -163,11 +162,6 @@ class ICanteenManager {
     dio.interceptors.add(
       InterceptorsWrapper(
         onError: (DioException error, ErrorInterceptorHandler handler) {
-          Sentry.configureScope((scope) {
-            scope.setTag("ICanteen Dio error message", error.message ?? "");
-            scope.setContexts("ICanteen Dio error response",
-                error.response?.data.toString() ?? {});
-          });
           toastification.show(
             type: ToastificationType.error,
             style: ToastificationStyle.flat,

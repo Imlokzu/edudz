@@ -1,13 +1,13 @@
+import 'package:edudz/server_config.dart';
 import 'dart:developer';
 
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_cached_pdfview/flutter_cached_pdfview.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 import 'package:dio/dio.dart';
 import 'package:html_unescape/html_unescape.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,7 +31,7 @@ class MessagePage extends StatefulWidget {
 class MessagePageState extends BaseState<MessagePage> {
   late SessionManager sessionManager;
   late SharedPreferences sharedPreferences;
-  String baseUrl = FirebaseRemoteConfig.instance.getString("testUrl");
+  String baseUrl = ep2ServerUrl;
   bool loading = true;
   Dio dio = Dio();
 

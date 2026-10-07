@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.vypal.eduapge2">
+    package="me.waveio.edudz">
     <queries>
         <intent>
             <action android:name="android.intent.action.VIEW" />
@@ -7,8 +7,8 @@
             <data android:scheme="https" />
         </intent>
     </queries>
-    <application
-        android:label="EduPage 2"
+    <application android:allowBackup="false"
+        android:label="edudz"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -35,7 +35,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="http" android:host="ep2.vypal.me" />
+                <data android:scheme="http" android:host="ep2.waveio.me" />
                 <data android:scheme="https" />
             </intent-filter>
         </activity>

@@ -1,13 +1,13 @@
+import 'package:edudz/server_config.dart';
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
-import 'package:eduapge2/timetable.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:edudz/l10n/app_localizations.dart';
+import 'package:edudz/timetable.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
@@ -20,7 +20,10 @@ Future<bool> isConnected() async {
 }
 
 class EP2Data {
-  final Dio dio = Dio();
+  final Dio dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 12),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 12)));
   late SharedPreferences sharedPreferences;
 
   String baseUrl = "";
@@ -55,11 +58,6 @@ class EP2Data {
           ].contains(error.response?.data.toString())) {
             return handler.next(error);
           }
-          Sentry.configureScope((scope) {
-            scope.setTag("Dio error message", error.message ?? "");
-            scope.setContexts(
-                "Dio error response", error.response?.data.toString() ?? {});
-          });
           toastification.show(
             type: ToastificationType.error,
             style: ToastificationStyle.flat,
@@ -146,7 +144,7 @@ class EP2Data {
     if (endpoint != null && endpoint != "") {
       baseUrl = endpoint;
     } else {
-      baseUrl = FirebaseRemoteConfig.instance.getString("testUrl");
+      baseUrl = ep2ServerUrl;
     }
 
     if (!(sharedPreferences.getBool("onboardingCompleted") ?? false)) {
@@ -355,6 +353,7 @@ class User {
 
   String token = "";
   String name = "";
+  DioException? lastLoginFailure;
 
   User({
     required this.username,
@@ -363,6 +362,7 @@ class User {
   });
 
   Future<bool> login() async {
+    lastLoginFailure = null;
     try {
       bool onboardingComplete =
           data.sharedPreferences.getBool("onboardingCompleted") ?? false;
@@ -405,9 +405,10 @@ class User {
       token = resp.data['token'];
       name = resp.data["name"];
 
-      saveToCache();
+      await saveToCache();
       return true;
     } catch (e) {
+      if (e is DioException) lastLoginFailure = e;
       return false;
     }
   }
@@ -485,32 +486,34 @@ class User {
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       username: json['username'],
-      password: json['password'],
+      password: json['password'] ?? '',
       server: json['server'],
     )
       ..token = json['token']
       ..name = json['name'];
   }
 
+  static const secureStorage = FlutterSecureStorage();
+
   Future<void> saveToCache() async {
+    await secureStorage.write(
+        key: 'edudz_account', value: jsonEncode(toJson()));
     final prefs = await SharedPreferences.getInstance();
-    final userJson = jsonEncode(toJson());
-    await prefs.setString('user', userJson);
+    await prefs.remove('user');
+    await prefs.remove('password');
   }
 
   static Future<User?> loadFromCache() async {
-    final prefs = await SharedPreferences.getInstance();
-    final userJson = prefs.getString('user');
-    if (userJson != null) {
-      return User.fromJson(jsonDecode(userJson));
-    } else {
-      return null;
-    }
+    final value = await secureStorage.read(key: 'edudz_account');
+    if (value == null) return null;
+    return User.fromJson(jsonDecode(value));
   }
 
   Future<void> clearCache() async {
+    await secureStorage.delete(key: 'edudz_account');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user');
+    await prefs.remove('password');
   }
 }
 

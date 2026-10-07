@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
-import 'package:eduapge2/screens/onboarding.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
+import 'package:edudz/screens/onboarding.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 
 class LoadingScreen extends StatefulWidget {
   final Function loadedCallback;

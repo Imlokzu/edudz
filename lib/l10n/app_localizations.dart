@@ -8,7 +8,9 @@ import 'package:intl/intl.dart' as intl;
 import 'app_localizations_cs.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_ja.dart';
 import 'app_localizations_sk.dart';
+import 'app_localizations_ta.dart';
 import 'app_localizations_uk.dart';
 
 // ignore_for_file: type=lint
@@ -100,7 +102,9 @@ abstract class AppLocalizations {
     Locale('cs'),
     Locale('de'),
     Locale('en'),
+    Locale('ja'),
     Locale('sk'),
+    Locale('ta'),
     Locale('uk')
   ];
 
@@ -203,7 +207,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeUpdateDescription.
   ///
   /// In en, this message translates to:
-  /// **'Please visit https://github.com/DislikesSchool/EduPage2/releases to download the latest version'**
+  /// **'Please visit https://github.com/DislikesSchool/edudz/releases to download the latest version'**
   String get homeUpdateDescription;
 
   /// No description provided for @homeQuickstart.
@@ -227,7 +231,7 @@ abstract class AppLocalizations {
   /// No description provided for @homePatchDownloaded.
   ///
   /// In en, this message translates to:
-  /// **'Patch downloaded, please restart EduPage2'**
+  /// **'Patch downloaded, please restart edudz'**
   String get homePatchDownloaded;
 
   /// No description provided for @homeDeleteData.
@@ -305,7 +309,7 @@ abstract class AppLocalizations {
   /// No description provided for @loginPleaseLogin.
   ///
   /// In en, this message translates to:
-  /// **'Please login to EduPage2'**
+  /// **'Please login to edudz'**
   String get loginPleaseLogin;
 
   /// No description provided for @loginUseExistingCredentials.
@@ -383,13 +387,13 @@ abstract class AppLocalizations {
   /// No description provided for @setupWelcomeTitle.
   ///
   /// In en, this message translates to:
-  /// **'Welcome to EduPage2'**
+  /// **'Welcome to edudz'**
   String get setupWelcomeTitle;
 
   /// No description provided for @setupWelcomeBody.
   ///
   /// In en, this message translates to:
-  /// **'EduPage2 is a modern client for Edupage focusing on speed, efficiency and user experience. EduPage2 is fully open-source and free to use. Make sure to join our Discord server for news and updates.'**
+  /// **'edudz is a modern client for Edupage focusing on speed, efficiency and user experience. edudz is fully open-source and free to use. Make sure to join our Discord server for news and updates.'**
   String get setupWelcomeBody;
 
   /// No description provided for @setupQuickStartTitle.
@@ -443,7 +447,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupDataStorageExplanation.
   ///
   /// In en, this message translates to:
-  /// **'EduPage2 has can optionally store some user data on the EduPage2 server to provide advanced functionality. The app will work fine without it, but some features may be limited.'**
+  /// **'edudz has can optionally store some user data on the edudz server to provide advanced functionality. The app will work fine without it, but some features may be limited.'**
   String get setupDataStorageExplanation;
 
   /// No description provided for @setupDataStorageDisabled.
@@ -455,7 +459,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupDataStorageDisabledExplanation.
   ///
   /// In en, this message translates to:
-  /// **'Server storage is disabled on the EduPage2 server instance that you are connecting to.'**
+  /// **'Server storage is disabled on the edudz server instance that you are connecting to.'**
   String get setupDataStorageDisabledExplanation;
 
   /// No description provided for @setupDataStoragePrivacyEncrypted.
@@ -479,7 +483,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupDataStoragePrivacyDetailsUnencrypted.
   ///
   /// In en, this message translates to:
-  /// **'The server that you are connecting to does not encrypt your data. We would recommend either enabling encryption on the server, or using the official EduPage2 server to store your data securely.'**
+  /// **'The server that you are connecting to does not encrypt your data. We would recommend either enabling encryption on the server, or using the official edudz server to store your data securely.'**
   String get setupDataStoragePrivacyDetailsUnencrypted;
 
   /// No description provided for @setupDataStorageEnable.
@@ -515,13 +519,13 @@ abstract class AppLocalizations {
   /// No description provided for @setupDataStoragePrivacy.
   ///
   /// In en, this message translates to:
-  /// **'EduPage2 Data Storage Security'**
+  /// **'edudz Data Storage Security'**
   String get setupDataStoragePrivacy;
 
   /// No description provided for @setupDataStoragePrivacyDetails.
   ///
   /// In en, this message translates to:
-  /// **'The EduPage2 server stores data securely and in an encrypted manner on a private dedicated server. No data is shared with any external parties.'**
+  /// **'The edudz server stores data securely and in an encrypted manner on a private dedicated server. No data is shared with any external parties.'**
   String get setupDataStoragePrivacyDetails;
 
   /// No description provided for @setupFeaturesAvailable.
@@ -557,7 +561,7 @@ abstract class AppLocalizations {
   /// No description provided for @setupCompleteBody.
   ///
   /// In en, this message translates to:
-  /// **'Your setup is complete. You can now start using EduPage2.'**
+  /// **'Your setup is complete. You can now start using edudz.'**
   String get setupCompleteBody;
 
   /// No description provided for @setupDone.
@@ -839,13 +843,13 @@ abstract class AppLocalizations {
   /// No description provided for @qrLoginPleaseLogin.
   ///
   /// In en, this message translates to:
-  /// **'EduPage2 QR Login'**
+  /// **'edudz QR Login'**
   String get qrLoginPleaseLogin;
 
   /// No description provided for @qrLoginUseExistingCredentials.
   ///
   /// In en, this message translates to:
-  /// **'You are about to login to EduPage2 using a QR code'**
+  /// **'You are about to login to edudz using a QR code'**
   String get qrLoginUseExistingCredentials;
 
   /// No description provided for @gradesTitle.
@@ -889,8 +893,15 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['cs', 'de', 'en', 'sk', 'uk'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+        'cs',
+        'de',
+        'en',
+        'ja',
+        'sk',
+        'ta',
+        'uk'
+      ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -905,8 +916,12 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsDe();
     case 'en':
       return AppLocalizationsEn();
+    case 'ja':
+      return AppLocalizationsJa();
     case 'sk':
       return AppLocalizationsSk();
+    case 'ta':
+      return AppLocalizationsTa();
     case 'uk':
       return AppLocalizationsUk();
   }

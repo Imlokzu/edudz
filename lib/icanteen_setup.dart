@@ -1,11 +1,11 @@
+import 'package:edudz/server_config.dart';
 import 'package:dio/dio.dart';
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 import 'package:toastification/toastification.dart';
 
 class ICanteenSetupScreen extends StatefulWidget {
@@ -24,7 +24,7 @@ class ICanteenSetupScreenState extends BaseState<ICanteenSetupScreen> {
   late SessionManager sessionManager;
   late SharedPreferences sharedPreferences;
 
-  String baseUrl = FirebaseRemoteConfig.instance.getString("testUrl");
+  String baseUrl = ep2ServerUrl;
 
   AppLocalizations? local;
 

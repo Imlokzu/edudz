@@ -1,10 +1,10 @@
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
-import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:edudz/server_config.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'package:intl/intl.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 
 class TimeTablePage extends StatefulWidget {
   final SessionManager sessionManager;
@@ -16,7 +16,7 @@ class TimeTablePage extends StatefulWidget {
 }
 
 class TimeTablePageState extends BaseState<TimeTablePage> {
-  String baseUrl = FirebaseRemoteConfig.instance.getString("testUrl");
+  String baseUrl = ep2ServerUrl;
 
   bool error = false; //for error status
   bool loading = false; //for data featching status

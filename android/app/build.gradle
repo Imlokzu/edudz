@@ -2,7 +2,6 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
 }
 
 def localProperties = new Properties()
@@ -29,25 +28,9 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
-def versionPropertiesFile = file('version.properties')
-
-def versionProperties = new Properties()
-
-if (versionPropertiesFile.canRead()) {
-    versionProperties.load(new FileInputStream(versionPropertiesFile))
-}
-
-def appVersionCode = (versionProperties['versionCode'] ?: "1").toInteger()
-
-task incrementVersionCode {
-    doLast {
-        versionProperties['versionCode'] = (appVersionCode + 1).toString()
-        versionProperties.store(versionPropertiesFile.newWriter(), null)
-    }
-}
 
 android {
-    namespace "com.vypal.eduapge2"
+    namespace "me.waveio.edudz"
     compileSdkVersion 36
     ndkVersion "28.2.13676358"
 
@@ -66,10 +49,10 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId "com.vypal.eduapge2"
+        applicationId "me.waveio.edudz"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        versionCode appVersionCode
+        versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         targetSdkVersion 36
         minSdkVersion flutter.minSdkVersion
@@ -95,11 +78,7 @@ android {
         }
     }
 
-    tasks.whenTaskAdded { task ->
-        if (task.name == 'assembleRelease') {
-            task.dependsOn incrementVersionCode
-        }
-    }
+
 }
 
 flutter {
@@ -107,6 +86,4 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.10"
-    implementation 'com.android.support:multidex:1.0.3'
 }

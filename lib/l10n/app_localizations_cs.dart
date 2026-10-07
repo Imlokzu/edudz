@@ -65,7 +65,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get homeUpdateDescription =>
-      'Prosím navštivte https://github.com/DislikesSchool/EduPage2/releases pro nejnovější verzi';
+      'Prosím navštivte https://github.com/DislikesSchool/edudz/releases pro nejnovější verzi';
 
   @override
   String get homeQuickstart => 'Rychlý start';
@@ -160,11 +160,11 @@ class AppLocalizationsCs extends AppLocalizations {
       'Server není vyžadován, ale může pomoci, když se nemůžete přihlásit a jste si jist(á), že jste zadal(a) správné přihlašovací údaje';
 
   @override
-  String get setupWelcomeTitle => 'Vítejte v EduPage2';
+  String get setupWelcomeTitle => 'Vítejte v edudz';
 
   @override
   String get setupWelcomeBody =>
-      'EduPage2 je moderní klient pro EduPage zaměřený na rychlost, efektivitu a uživatelský zážitek. EduPage2 je plně open-source a volně k použití. Připojte se na náš Discord server pro příjem novinek.';
+      'edudz je moderní klient pro EduPage zaměřený na rychlost, efektivitu a uživatelský zážitek. edudz je plně open-source a volně k použití. Připojte se na náš Discord server pro příjem novinek.';
 
   @override
   String get setupQuickStartTitle => 'Rychlý start';
@@ -196,14 +196,14 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get setupDataStorageExplanation =>
-      '„EduPage2 může volitelně ukládat některá uživatelská data na server EduPage2, aby byla dostupná rozšířená funkčnost. Aplikace bude fungovat i bez toho, ale některé funkce mohou být omezené.';
+      '„edudz může volitelně ukládat některá uživatelská data na server edudz, aby byla dostupná rozšířená funkčnost. Aplikace bude fungovat i bez toho, ale některé funkce mohou být omezené.';
 
   @override
   String get setupDataStorageDisabled => 'Ukládání na server je vypnuto';
 
   @override
   String get setupDataStorageDisabledExplanation =>
-      'Ukládání na server je vypnuto na instanci serveru EduPage2, ke které se připojujete.';
+      'Ukládání na server je vypnuto na instanci serveru edudz, ke které se připojujete.';
 
   @override
   String get setupDataStoragePrivacyEncrypted => 'Vaše data JSOU šifrována';
@@ -217,7 +217,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get setupDataStoragePrivacyDetailsUnencrypted =>
-      'Server, ke kterému se připojujete, nešifruje vaše data. Doporučujeme buď zapnout šifrování na serveru, nebo použít oficiální server EduPage2 pro bezpečné uložení vašich dat.';
+      'Server, ke kterému se připojujete, nešifruje vaše data. Doporučujeme buď zapnout šifrování na serveru, nebo použít oficiální server edudz pro bezpečné uložení vašich dat.';
 
   @override
   String get setupDataStorageEnable => 'Povolit ukládání dat';
@@ -235,11 +235,11 @@ class AppLocalizationsCs extends AppLocalizations {
   String get setupDataStorageMessages => 'Ukládání časové osy';
 
   @override
-  String get setupDataStoragePrivacy => 'Bezpečnost ukládání dat v EduPage2';
+  String get setupDataStoragePrivacy => 'Bezpečnost ukládání dat v edudz';
 
   @override
   String get setupDataStoragePrivacyDetails =>
-      'Server EduPage2 ukládá data bezpečně a šifrovaně na soukromém dedikovaném serveru. Žádná data nejsou sdílena s externími stranami.';
+      'Server edudz ukládá data bezpečně a šifrovaně na soukromém dedikovaném serveru. Žádná data nejsou sdílena s externími stranami.';
 
   @override
   String get setupFeaturesAvailable => 'Funkční funkce';
@@ -259,7 +259,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get setupCompleteBody =>
-      'Nastavení je dokončeno. Nyní můžete začít používat EduPage2.';
+      'Nastavení je dokončeno. Nyní můžete začít používat edudz.';
 
   @override
   String get setupDone => 'Nastavení hotovo';
@@ -432,7 +432,7 @@ class AppLocalizationsCs extends AppLocalizations {
       'Při odesílání zprávy se vyskytla chyba, tato chyba byla nahlášena!';
 
   @override
-  String get qrLoginPleaseLogin => 'EduPage2 QR Přihlášení';
+  String get qrLoginPleaseLogin => 'edudz QR Přihlášení';
 
   @override
   String get qrLoginUseExistingCredentials =>

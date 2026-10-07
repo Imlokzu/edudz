@@ -65,7 +65,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeUpdateDescription =>
-      'Please visit https://github.com/DislikesSchool/EduPage2/releases to download the latest version';
+      'Please visit https://github.com/DislikesSchool/edudz/releases to download the latest version';
 
   @override
   String get homeQuickstart => 'QuickStart';
@@ -77,7 +77,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homePatchAvailable => 'Installing new patch…';
 
   @override
-  String get homePatchDownloaded => 'Patch downloaded, please restart EduPage2';
+  String get homePatchDownloaded => 'Patch downloaded, please restart edudz';
 
   @override
   String get homeDeleteData => 'Delete data';
@@ -117,7 +117,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messagesTitle => 'Messages';
 
   @override
-  String get loginPleaseLogin => 'Please login to EduPage2';
+  String get loginPleaseLogin => 'Please login to edudz';
 
   @override
   String get loginUseExistingCredentials =>
@@ -158,11 +158,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Server is optional, but might help if you are unable to login and are sure you have the correct credentials';
 
   @override
-  String get setupWelcomeTitle => 'Welcome to EduPage2';
+  String get setupWelcomeTitle => 'Welcome to edudz';
 
   @override
   String get setupWelcomeBody =>
-      'EduPage2 is a modern client for Edupage focusing on speed, efficiency and user experience. EduPage2 is fully open-source and free to use. Make sure to join our Discord server for news and updates.';
+      'edudz is a modern client for Edupage focusing on speed, efficiency and user experience. edudz is fully open-source and free to use. Make sure to join our Discord server for news and updates.';
 
   @override
   String get setupQuickStartTitle => 'Quick Start';
@@ -194,14 +194,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupDataStorageExplanation =>
-      'EduPage2 has can optionally store some user data on the EduPage2 server to provide advanced functionality. The app will work fine without it, but some features may be limited.';
+      'edudz has can optionally store some user data on the edudz server to provide advanced functionality. The app will work fine without it, but some features may be limited.';
 
   @override
   String get setupDataStorageDisabled => 'Server storage is disabled';
 
   @override
   String get setupDataStorageDisabledExplanation =>
-      'Server storage is disabled on the EduPage2 server instance that you are connecting to.';
+      'Server storage is disabled on the edudz server instance that you are connecting to.';
 
   @override
   String get setupDataStoragePrivacyEncrypted => 'Your data is encrypted';
@@ -215,7 +215,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupDataStoragePrivacyDetailsUnencrypted =>
-      'The server that you are connecting to does not encrypt your data. We would recommend either enabling encryption on the server, or using the official EduPage2 server to store your data securely.';
+      'The server that you are connecting to does not encrypt your data. We would recommend either enabling encryption on the server, or using the official edudz server to store your data securely.';
 
   @override
   String get setupDataStorageEnable => 'Enable Data Storage';
@@ -233,11 +233,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get setupDataStorageMessages => 'Timeline storage';
 
   @override
-  String get setupDataStoragePrivacy => 'EduPage2 Data Storage Security';
+  String get setupDataStoragePrivacy => 'edudz Data Storage Security';
 
   @override
   String get setupDataStoragePrivacyDetails =>
-      'The EduPage2 server stores data securely and in an encrypted manner on a private dedicated server. No data is shared with any external parties.';
+      'The edudz server stores data securely and in an encrypted manner on a private dedicated server. No data is shared with any external parties.';
 
   @override
   String get setupFeaturesAvailable => 'Working features';
@@ -257,7 +257,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get setupCompleteBody =>
-      'Your setup is complete. You can now start using EduPage2.';
+      'Your setup is complete. You can now start using edudz.';
 
   @override
   String get setupDone => 'Setup Done';
@@ -428,11 +428,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'There was an issue sending your message, it has been reported!';
 
   @override
-  String get qrLoginPleaseLogin => 'EduPage2 QR Login';
+  String get qrLoginPleaseLogin => 'edudz QR Login';
 
   @override
   String get qrLoginUseExistingCredentials =>
-      'You are about to login to EduPage2 using a QR code';
+      'You are about to login to edudz using a QR code';
 
   @override
   String get gradesTitle => 'Grades';

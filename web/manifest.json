@@ -1,11 +1,11 @@
 {
-    "name": "EduPage2",
-    "short_name": "EduPage2",
+    "name": "edudz",
+    "short_name": "edudz",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#698cf3",
-    "description": "The modern Edupage client",
+    "background_color": "#F6F5F0",
+    "theme_color": "#1B5245",
+    "description": "edudz — your school day, made lighter.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

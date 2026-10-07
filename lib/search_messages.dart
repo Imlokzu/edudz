@@ -1,7 +1,7 @@
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/message.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/message.dart';
 import 'package:flutter/material.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'package:html_unescape/html_unescape.dart';
 

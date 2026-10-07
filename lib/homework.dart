@@ -1,8 +1,8 @@
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 
 class HomeworkPage extends StatefulWidget {
   final SessionManager sessionManager;

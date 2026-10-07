@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:eduapge2/main.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 
 class QRLoginPage extends StatefulWidget {
   final String code;
@@ -141,7 +141,7 @@ class QRLoinPageState extends BaseState<QRLoginPage> {
                       Dio dio = Dio();
 
                       var response = await dio.post(
-                        'https://ep2.vypal.me/qrlogin/${widget.code}',
+                        'https://ep2.waveio.me/qrlogin/${widget.code}',
                         options: Options(
                           headers: {
                             Headers.contentTypeHeader:

@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/main.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
-import 'package:eduapge2/l10n/app_localizations.dart';
+import 'package:edudz/l10n/app_localizations.dart';
 import 'package:toastification/toastification.dart';
 
 class SendMessageScreen extends StatefulWidget {
@@ -270,11 +270,8 @@ class SendMessageScreenState extends BaseState<SendMessageScreen> {
                               ),
                             );
                           },
-                          onReorder: (int oldIndex, int newIndex) {
+                          onReorderItem: (int oldIndex, int newIndex) {
                             setState(() {
-                              if (oldIndex < newIndex) {
-                                newIndex -= 1;
-                              }
                               final PollOption item =
                                   pollOptions.removeAt(oldIndex);
                               pollOptions.insert(newIndex, item);

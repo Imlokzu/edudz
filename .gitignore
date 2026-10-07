@@ -45,3 +45,11 @@ app.*.map.json
 
 
 /coverage
+# Local identity and release artifacts
+*.jks
+*.keystore
+**/key.properties
+**/google-services.json
+**/GoogleService-Info.plist
+.env*
+releases/*.apk

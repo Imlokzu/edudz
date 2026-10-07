@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:eduapge2/api.dart';
-import 'package:eduapge2/home.dart';
-import 'package:eduapge2/main.dart';
+import 'package:edudz/api.dart';
+import 'package:edudz/home.dart';
+import 'package:edudz/main.dart';
 import 'package:flutter/material.dart';
 
 class TimerDisplay extends StatefulWidget {
