@@ -26,6 +26,7 @@ Release signing material is local and ignored. Never commit it.
 - Real school data: public server login and local backend timetable/timeline/grades
   endpoints respond; private live Dart test confirms all model adapters parse.
 - Signed release APK: real EduPage sign-in and all four data tabs verified.
+- Native session restore and offline cache notice verified after app restart.
 - Native screenshots in docs/screenshots use explicitly marked demo data only.
 
 The installed Homebrew Dart launcher hangs in dyld on this Mac. Isolated SDK
