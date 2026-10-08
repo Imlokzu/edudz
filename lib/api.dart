@@ -716,16 +716,19 @@ class TimeTable {
 }
 
 class TimeTableData {
-  TimeTableData(this.date, this.classes, this.periods);
+  TimeTableData(this.date, this.classes, this.periods,
+      {this.breaks = defaultSchoolBreaks});
 
   final DateTime date;
   final List<TimeTableClass> classes;
   final List<TimeTablePeriod> periods;
+  final List<SchoolBreak> breaks;
 
   Map<String, dynamic> toJson() => {
         'date': date.toIso8601String(),
         'classes': classes.map((c) => c.toJson()).toList(),
         'periods': periods.map((p) => p.toJson()).toList(),
+        'scheduled_breaks': breaks.map((p) => p.toJson()).toList(),
       };
 
   static TimeTableData fromJson(Map<String, dynamic> json) =>
@@ -737,7 +740,68 @@ class TimeTableData {
         (json['periods'] as List)
             .map((p) => TimeTablePeriod.fromJson(p as Map<String, dynamic>))
             .toList(),
+        breaks: json['scheduled_breaks'] == null
+            ? defaultSchoolBreaks
+            : (json['scheduled_breaks'] as List)
+                .map((p) => SchoolBreak.fromJson(Map<String, dynamic>.from(p)))
+                .toList(),
       ));
+}
+
+class SchoolBreak {
+  const SchoolBreak(this.start, this.end, {this.kind = 'break'});
+  final String start, end, kind;
+  Map<String, dynamic> toJson() =>
+      {'starttime': start, 'endtime': end, 'kind': kind};
+  factory SchoolBreak.fromJson(Map<String, dynamic> json) =>
+      SchoolBreak(json['starttime'], json['endtime'],
+          kind: json['kind'] ?? 'break');
+}
+
+const defaultSchoolBreaks = [
+  SchoolBreak('09:30', '09:45'),
+  SchoolBreak('11:15', '11:30'),
+  SchoolBreak('13:00', '14:00')
+];
+
+class LessonChanges {
+  const LessonChanges(
+      {this.changed = false,
+      this.cancelled = false,
+      this.teacher = false,
+      this.room = false,
+      this.schoolClass = false,
+      this.subject = false,
+      this.originalTeacher = '',
+      this.originalRoom = '',
+      this.originalClass = '',
+      this.originalSubject = ''});
+  final bool changed, cancelled, teacher, room, schoolClass, subject;
+  final String originalTeacher, originalRoom, originalClass, originalSubject;
+  bool get hasSpecificChange => teacher || room || schoolClass || subject;
+  Map<String, dynamic> toJson() => {
+        'changed': changed,
+        'cancelled': cancelled,
+        'teacher_changed': teacher,
+        'room_changed': room,
+        'class_changed': schoolClass,
+        'subject_changed': subject,
+        'original_teacher': originalTeacher,
+        'original_room': originalRoom,
+        'original_class': originalClass,
+        'original_subject': originalSubject
+      };
+  factory LessonChanges.fromJson(Map<String, dynamic> json) => LessonChanges(
+      changed: json['changed'] == true,
+      cancelled: json['cancelled'] == true,
+      teacher: json['teacher_changed'] == true,
+      room: json['room_changed'] == true,
+      schoolClass: json['class_changed'] == true,
+      subject: json['subject_changed'] == true,
+      originalTeacher: json['original_teacher'] ?? '',
+      originalRoom: json['original_room'] ?? '',
+      originalClass: json['original_class'] ?? '',
+      originalSubject: json['original_subject'] ?? '');
 }
 
 class TimeTablePeriod {
@@ -772,6 +836,7 @@ class TimeTableClass {
     this.blockStart = "",
     this.blockEnd = "",
     this.originPeriod = "",
+    this.changes = const LessonChanges(),
     this.date = "",
     required this.period,
     required this.startTime,
@@ -788,6 +853,7 @@ class TimeTableClass {
 
   final String type;
   final String blockStart, blockEnd, originPeriod;
+  final LessonChanges changes;
   final String date;
   final String period;
   final String startTime;
@@ -808,6 +874,7 @@ class TimeTableClass {
         'block_starttime': blockStart,
         'block_endtime': blockEnd,
         'origin_period': originPeriod,
+        'lesson_changes': changes.toJson(),
         'date': date,
         'uniperiod': period,
         'starttime': startTime,
@@ -827,6 +894,8 @@ class TimeTableClass {
         blockStart: json['block_starttime'] ?? '',
         blockEnd: json['block_endtime'] ?? '',
         originPeriod: json['origin_period'] ?? '',
+        changes: LessonChanges.fromJson(
+            Map<String, dynamic>.from(json['lesson_changes'] ?? {})),
         date: json['date'],
         period: json['uniperiod'],
         startTime: json['starttime'],
@@ -836,7 +905,7 @@ class TimeTableClass {
         classes: (json['classes'] as List)
             .map((c) => Class.fromJson(c as Map<String, dynamic>))
             .toList(),
-        groupNames: List<String>.from(json['groupnames']),
+        groupNames: List<String>.from(json['groupnames'] ?? []),
         iGroupId: json['igroupid'],
         teachers: (json['teachers'] as List)
             .map((t) => Teacher.fromJson(t as Map<String, dynamic>))
@@ -844,7 +913,7 @@ class TimeTableClass {
         classrooms: (json['classrooms'] as List)
             .map((c) => Classroom.fromJson(c as Map<String, dynamic>))
             .toList(),
-        studentIds: List<String>.from(json['studentids']),
+        studentIds: List<String>.from(json['studentids'] ?? []),
         colors: List<String>.from(json['colors'] ?? []),
       );
 }

@@ -22,6 +22,7 @@ TimeTableClass periodCopy(
     TimeTableClass lesson, String period, String start, String end) {
   final value = TimeTableClass(
     type: lesson.type,
+    changes: lesson.changes,
     date: lesson.date,
     period: period,
     startTime: start,
@@ -52,7 +53,10 @@ TimeTableData normalizeTimetable(TimeTableData day) {
           .compareTo(clockMinutes(b.startTime) ?? 0));
   final result = <TimeTableClass>[];
   for (final lesson in day.classes) {
-    if (lesson.subject == null || lesson.subject!.name.trim().isEmpty) continue;
+    if (!lesson.changes.cancelled &&
+        (lesson.subject == null || lesson.subject!.name.trim().isEmpty)) {
+      continue;
+    }
     final start = clockMinutes(lesson.startTime),
         end = clockMinutes(lesson.endTime);
     if (start == null || end == null || end <= start) continue;
@@ -87,7 +91,7 @@ TimeTableData normalizeTimetable(TimeTableData day) {
   }
   result.sort((a, b) => (clockMinutes(a.startTime) ?? 0)
       .compareTo(clockMinutes(b.startTime) ?? 0));
-  return TimeTableData(day.date, result, periods);
+  return TimeTableData(day.date, result, periods, breaks: day.breaks);
 }
 
 enum SchoolPhase { noSchool, beforeSchool, lesson, breakTime, afterSchool }
@@ -97,6 +101,8 @@ class SchoolDayState {
       {required this.phase,
       required this.total,
       required this.remaining,
+      this.cancelled = 0,
+      this.breakKind = '',
       this.current,
       this.next,
       this.endsAt,
@@ -104,6 +110,8 @@ class SchoolDayState {
       this.end});
   final SchoolPhase phase;
   final int total, remaining;
+  final int cancelled;
+  final String breakKind;
   final TimeTableClass? current, next;
   final DateTime? endsAt, start, end;
   Duration remainingTime(DateTime now) {
@@ -113,10 +121,15 @@ class SchoolDayState {
 }
 
 SchoolDayState schoolDayState(TimeTableData day, DateTime now) {
-  final lessons = normalizeTimetable(day).classes;
+  final all = normalizeTimetable(day).classes;
+  final lessons = all.where((l) => !l.changes.cancelled).toList();
+  final cancelled = all.length - lessons.length;
   if (lessons.isEmpty) {
-    return const SchoolDayState(
-        phase: SchoolPhase.noSchool, total: 0, remaining: 0);
+    return SchoolDayState(
+        phase: SchoolPhase.noSchool,
+        total: 0,
+        remaining: 0,
+        cancelled: cancelled);
   }
   final start = onSchoolDate(day.date, lessons.first.startTime),
       end = onSchoolDate(day.date, lessons.last.endTime);
@@ -125,12 +138,15 @@ SchoolDayState schoolDayState(TimeTableData day, DateTime now) {
         to = onSchoolDate(day.date, lessons[i].endTime);
     if (!now.isBefore(to)) continue;
     if (now.isBefore(from)) {
+      final gap = i == 0 ? null : schoolGapAt(day, now);
       return SchoolDayState(
           phase: i == 0 ? SchoolPhase.beforeSchool : SchoolPhase.breakTime,
           total: lessons.length,
           remaining: lessons.length - i,
+          cancelled: cancelled,
+          breakKind: gap?.kind ?? '',
           next: lessons[i],
-          endsAt: from,
+          endsAt: gap == null ? from : onSchoolDate(day.date, gap.end),
           start: start,
           end: end);
     }
@@ -138,6 +154,7 @@ SchoolDayState schoolDayState(TimeTableData day, DateTime now) {
         phase: SchoolPhase.lesson,
         total: lessons.length,
         remaining: lessons.length - i,
+        cancelled: cancelled,
         current: lessons[i],
         next: i + 1 < lessons.length ? lessons[i + 1] : null,
         endsAt: to,
@@ -148,6 +165,7 @@ SchoolDayState schoolDayState(TimeTableData day, DateTime now) {
       phase: SchoolPhase.afterSchool,
       total: lessons.length,
       remaining: 0,
+      cancelled: cancelled,
       start: start,
       end: end);
 }
@@ -162,18 +180,56 @@ bool gapContainsPeriod(int start, int end, List<TimeTablePeriod> periods) =>
           to > from;
     });
 
-bool isFreeSchoolGap(TimeTableData day, DateTime now) {
-  final lessons = normalizeTimetable(day).classes;
-  for (var i = 1; i < lessons.length; i++) {
-    final start = onSchoolDate(day.date, lessons[i - 1].endTime);
-    final end = onSchoolDate(day.date, lessons[i].startTime);
-    if (!now.isBefore(start) && now.isBefore(end)) {
-      return gapContainsPeriod(clockMinutes(lessons[i - 1].endTime)!,
-          clockMinutes(lessons[i].startTime)!, day.periods);
+List<SchoolBreak> schoolGapSegments(TimeTableData day, int start, int end) {
+  if (end <= start) return [];
+  final cuts = <int>{start, end};
+  for (final pause in day.breaks) {
+    final from = clockMinutes(pause.start), to = clockMinutes(pause.end);
+    if (from != null && from > start && from < end) cuts.add(from);
+    if (to != null && to > start && to < end) cuts.add(to);
+  }
+  final sorted = cuts.toList()..sort();
+  return [
+    for (var i = 1; i < sorted.length; i++)
+      SchoolBreak(minuteClock(sorted[i - 1]), minuteClock(sorted[i]),
+          kind: day.breaks.any((p) =>
+                  (clockMinutes(p.start) ?? 2000) <= sorted[i - 1] &&
+                  (clockMinutes(p.end) ?? -1) >= sorted[i])
+              ? 'break'
+              : gapContainsPeriod(sorted[i - 1], sorted[i], day.periods)
+                  ? 'free_period'
+                  : 'break')
+  ];
+}
+
+List<SchoolBreak> schoolGaps(TimeTableData day) {
+  final lessons = normalizeTimetable(day)
+      .classes
+      .where((l) => !l.changes.cancelled)
+      .toList();
+  final result = <SchoolBreak>[];
+  if (lessons.isEmpty) return result;
+  var end = clockMinutes(lessons.first.endTime)!;
+  for (final lesson in lessons.skip(1)) {
+    result.addAll(schoolGapSegments(day, end, clockMinutes(lesson.startTime)!));
+    final nextEnd = clockMinutes(lesson.endTime)!;
+    if (nextEnd > end) end = nextEnd;
+  }
+  return result;
+}
+
+SchoolBreak? schoolGapAt(TimeTableData day, DateTime now) {
+  for (final gap in schoolGaps(day)) {
+    if (!now.isBefore(onSchoolDate(day.date, gap.start)) &&
+        now.isBefore(onSchoolDate(day.date, gap.end))) {
+      return gap;
     }
   }
-  return false;
+  return null;
 }
+
+bool isFreeSchoolGap(TimeTableData day, DateTime now) =>
+    schoolGapAt(day, now)?.kind == 'free_period';
 
 String countdownText(Duration duration) {
   final seconds = duration.inSeconds < 0 ? 0 : duration.inSeconds;

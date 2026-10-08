@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:edudz/api.dart' show LessonChanges;
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:intl/intl.dart';
 import 'attachments.dart';
 import 'controller.dart';
+import 'lesson_changes.dart';
 import 'shell.dart' show Surface;
 
 typedef AskStudy = void Function(String prompt, TaskEntry? task);
@@ -73,21 +75,61 @@ class _DetailPaneState extends State<DetailPane> {
   String? error;
   CancelToken? request;
   SchoolController get c => widget.controller;
+  LessonEntry? get _lesson => c.resolveLesson(widget.lesson);
+  String _lessonSnapshot = '';
+  String get _lessonKey {
+    final lesson = _lesson;
+    return jsonEncode([
+      lesson?.subject,
+      lesson?.teacher,
+      lesson?.room,
+      lesson?.original?.period,
+      lesson?.original?.date,
+      lesson?.original?.iGroupId,
+      lesson?.original?.classes.map((cl) => [cl.id, cl.name]).toList(),
+      lesson?.original?.changes.toJson()
+    ]);
+  }
+
   String t(String uk, String en, String de) => c.tr(uk, en, de);
   @override
   void initState() {
     super.initState();
+    _lessonSnapshot = _lessonKey;
+    c.addListener(_schoolChanged);
     _load();
+  }
+
+  void _schoolChanged() {
+    if (!mounted || widget.lesson == null) return;
+    final latest = _lessonKey;
+    if (latest != _lessonSnapshot) {
+      _lessonSnapshot = latest;
+      _load();
+    }
   }
 
   @override
   void didUpdateWidget(DetailPane old) {
     super.didUpdateWidget(old);
-    if (old.task?.id != widget.task?.id || old.lesson != widget.lesson) _load();
+    if (old.task?.id != widget.task?.id ||
+        old.lesson?.start != widget.lesson?.start ||
+        old.lesson?.original?.date != widget.lesson?.original?.date ||
+        old.lesson?.original?.subject?.id !=
+            widget.lesson?.original?.subject?.id ||
+        old.lesson?.original?.iGroupId != widget.lesson?.original?.iGroupId ||
+        old.lesson?.subject != widget.lesson?.subject ||
+        (old.lesson?.original?.type == 'event') !=
+            (widget.lesson?.original?.type == 'event') ||
+        old.lesson?.original?.period != widget.lesson?.original?.period) {
+      _lessonSnapshot = _lessonKey;
+      _load();
+    }
   }
 
   @override
   void dispose() {
+    c.removeListener(_schoolChanged);
     request?.cancel();
     super.dispose();
   }
@@ -119,7 +161,7 @@ class _DetailPaneState extends State<DetailPane> {
                 ])
           ];
         }
-        if (widget.lesson != null) {
+        if (_lesson != null) {
           plan = {
             'flags': {
               'dp0': {
@@ -144,12 +186,12 @@ class _DetailPaneState extends State<DetailPane> {
           final parsed = studyBlocks(Map<String, dynamic>.from(r.data));
           if (!token.isCancelled) blocks = parsed;
         }
-      } else if (widget.lesson != null) {
+      } else if (_lesson != null) {
         await c.ensureSession();
         final r = await c.data.dio.get('${c.data.baseUrl}/api/lesson-plan',
             queryParameters: {
-              'date': widget.lesson!.original?.date.isNotEmpty == true
-                  ? widget.lesson!.original!.date
+              'date': _lesson!.original?.date.isNotEmpty == true
+                  ? _lesson!.original!.date
                   : DateFormat('yyyy-MM-dd').format(c.selectedDate)
             },
             options: Options(
@@ -158,7 +200,7 @@ class _DetailPaneState extends State<DetailPane> {
         final plans = r.data['plan'];
         if (plans is List) {
           if (!token.isCancelled) {
-            plan = lessonPlanFor(plans, widget.lesson!);
+            plan = lessonPlanFor(plans, _lesson!);
           }
         }
       }
@@ -225,7 +267,7 @@ class _DetailPaneState extends State<DetailPane> {
   @override
   Widget build(BuildContext context) {
     final task = widget.task;
-    final lesson = widget.lesson;
+    final lesson = _lesson;
     final related = lesson == null
         ? <TaskEntry>[]
         : c.tasks
@@ -257,6 +299,16 @@ class _DetailPaneState extends State<DetailPane> {
                 _info(Icons.event, t('Здати до', 'Due on', 'Abgabe bis'),
                     DateFormat('d MMMM', c.language).format(task!.due!)),
               if (lesson != null) ...[
+                LessonChangeBadges(
+                    controller: c,
+                    changes: lesson.original?.changes ?? const LessonChanges()),
+                if (lesson.original?.changes.cancelled == true) ...[
+                  const SizedBox(height: 12),
+                  Text(t(
+                      'Урок скасовано. Він не входить до кількості занять і відліку часу.',
+                      'This lesson is cancelled. It is excluded from the lesson count and countdown.',
+                      'Diese Stunde fällt aus. Sie wird nicht zur Stundenzahl oder zum Countdown gezählt.')),
+                ],
                 if (lesson.original?.period.isNotEmpty ?? false)
                   _info(
                       Icons.format_list_numbered,
@@ -278,6 +330,31 @@ class _DetailPaneState extends State<DetailPane> {
                         ...lesson.original!.classes.map((cl) => cl.name),
                         ...lesson.original!.groupNames
                       ].join(', ')),
+                if (lesson.original?.changes.teacher == true &&
+                    lesson.original!.changes.originalTeacher.isNotEmpty)
+                  _info(
+                      Icons.swap_horiz,
+                      t('Заміна викладача', 'Teacher substitution',
+                          'Vertretung'),
+                      '${lesson.original!.changes.originalTeacher} → ${lesson.teacher.isEmpty ? '—' : lesson.teacher}'),
+                if (lesson.original?.changes.room == true &&
+                    lesson.original!.changes.originalRoom.isNotEmpty)
+                  _info(
+                      Icons.meeting_room_outlined,
+                      t('Зміна кабінету', 'Room change', 'Raumänderung'),
+                      '${lesson.original!.changes.originalRoom} → ${lesson.room.isEmpty ? '—' : lesson.room}'),
+                if (lesson.original?.changes.schoolClass == true &&
+                    lesson.original!.changes.originalClass.isNotEmpty)
+                  _info(
+                      Icons.groups_outlined,
+                      t('Зміна класу', 'Class change', 'Klassenänderung'),
+                      '${lesson.original!.changes.originalClass} → ${lesson.original!.classes.map((cl) => cl.name).join(', ')}'),
+                if (lesson.original?.changes.subject == true &&
+                    lesson.original!.changes.originalSubject.isNotEmpty)
+                  _info(
+                      Icons.swap_horiz,
+                      t('Зміна предмета', 'Subject change', 'Fachänderung'),
+                      '${lesson.original!.changes.originalSubject} → ${lesson.subject}'),
                 const SizedBox(height: 24),
                 Text(t('Тема уроку', 'Lesson topic', 'Unterrichtsthema'),
                     style: Theme.of(context).textTheme.titleLarge),

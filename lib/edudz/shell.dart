@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:edudz/api.dart' show LessonChanges;
 import 'package:edudz/message.dart';
 import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'controller.dart';
@@ -8,6 +9,7 @@ import 'theme.dart';
 import 'details.dart';
 import 'assistant.dart';
 import 'school_day.dart';
+import 'lesson_changes.dart';
 
 class EdudzShell extends StatefulWidget {
   const EdudzShell({super.key, required this.controller});
@@ -73,6 +75,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
       return const Scaffold(body: Center(child: BrandMark(size: 72)));
     }
     if (!c.authenticated) return LoginScreen(controller: c);
+    selectedLesson = c.resolveLesson(selectedLesson);
     final titles = [
       t('Твій день', 'Your day', 'Dein Tag'),
       t('Розклад', 'Timetable', 'Stundenplan'),
@@ -131,6 +134,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                   child: RefreshIndicator(
                       onRefresh: c.refresh,
                       child: ListView(
+                        key: PageStorageKey('edudz-tab-$tab'),
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
                         children: [
@@ -326,7 +330,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
             child: _stat(
                 context,
                 Icons.menu_book_outlined,
-                '${lessons.length}',
+                '${lessons.where((l) => l.original?.changes.cancelled != true).length}',
                 c.showingNextDay
                     ? t('Наступного дня', 'Next school day',
                         'Nächster Schultag')
@@ -390,8 +394,13 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
             '${t('Школа починається о', 'School starts at', 'Schule beginnt um')} ${state.next?.startTime}',
           SchoolPhase.afterSchool => t('Школу на сьогодні завершено',
               'School is finished for today', 'Schule für heute beendet'),
-          SchoolPhase.noSchool => t('Сьогодні уроків немає', 'No school today',
-              'Heute kein Unterricht'),
+          SchoolPhase.noSchool => state.cancelled > 0
+              ? t(
+                  'Сьогодні всі уроки скасовано',
+                  'All lessons are cancelled today',
+                  'Heute fallen alle Stunden aus')
+              : t('Сьогодні уроків немає', 'No school today',
+                  'Heute kein Unterricht'),
         };
         final phaseLabel = switch (state.phase) {
           SchoolPhase.lesson =>
@@ -411,8 +420,11 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                 state.phase == SchoolPhase.beforeSchool
             ? t('До початку школи', 'Until school starts', 'Bis Schulbeginn')
             : state.phase == SchoolPhase.breakTime
-                ? t('До наступного уроку', 'Until the next lesson',
-                    'Bis zur nächsten Stunde')
+                ? state.breakKind == 'free_period'
+                    ? t('До кінця вільного часу', 'Until free time ends',
+                        'Bis zum Ende der Freistunde')
+                    : t('До кінця перерви', 'Until the break ends',
+                        'Bis Pausenende')
                 : t('До кінця уроку', 'Until the lesson ends',
                     'Bis Stundenende');
         return Container(
@@ -436,9 +448,16 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                       letterSpacing: -.9,
                       fontWeight: FontWeight.w700)),
               if (state.phase == SchoolPhase.lesson) ...[
+                if (current!.changes.changed ||
+                    current.changes.cancelled ||
+                    current.changes.hasSpecificChange) ...[
+                  const SizedBox(height: 12),
+                  LessonChangeBadges(
+                      controller: c, changes: current.changes, onDark: true),
+                ],
                 const SizedBox(height: 12),
                 _heroLabel(Icons.schedule,
-                    '${current!.startTime} — ${current.endTime}'),
+                    '${current.startTime} — ${current.endTime}'),
                 if (current.classrooms.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   _heroLabel(Icons.location_on_outlined,
@@ -476,6 +495,12 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
               Text(
                   '${t('Залишилось уроків', 'Lessons remaining', 'Verbleibende Stunden')}: ${state.remaining} / ${state.total}',
                   style: const TextStyle(color: Colors.white, fontSize: 14)),
+              if (state.cancelled > 0) ...[
+                const SizedBox(height: 8),
+                Text(
+                    'Ausfall: ${state.cancelled} ${t('скасовано', 'cancelled', 'entfallen')}',
+                    style: const TextStyle(color: mint, fontSize: 13)),
+              ],
               if (state.start != null && state.end != null) ...[
                 const SizedBox(height: 8),
                 Text(
@@ -619,22 +644,25 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
         if (start > end) {
           final lessonDate =
               DateTime.tryParse(l.original?.date ?? '') ?? c.selectedDate;
-          final free =
-              gapContainsPeriod(end, start, c.dayFor(lessonDate).periods);
-          rows.add(Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-              child: Row(children: [
-                Icon(free ? Icons.hourglass_empty : Icons.coffee_outlined,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant),
-                const SizedBox(width: 10),
-                Expanded(
-                    child: Text(
-                        '${free ? t('Вільний час', 'Free period', 'Freistunde') : t('Перерва', 'Break', 'Pause')} · ${start - end} ${t('хв', 'min', 'Min.')} · ${lessons[i - 1].end} — ${l.start}',
-                        style: Theme.of(context).textTheme.bodySmall)),
-              ])));
+          for (final gap
+              in schoolGapSegments(c.dayFor(lessonDate), end, start)) {
+            final free = gap.kind == 'free_period';
+            rows.add(Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Row(children: [
+                  Icon(free ? Icons.hourglass_empty : Icons.coffee_outlined,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: Text(
+                          '${free ? t('Вільний час', 'Free period', 'Freistunde') : t('Перерва', 'Break', 'Pause')} · ${clockMinutes(gap.end)! - clockMinutes(gap.start)!} ${t('хв', 'min', 'Min.')} · ${gap.start} — ${gap.end}',
+                          style: Theme.of(context).textTheme.bodySmall)),
+                ])));
+          }
         }
       }
+      final changes = l.original?.changes ?? const LessonChanges();
       rows.add(Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Surface(
@@ -670,11 +698,17 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                             width: 3,
                             height: 48,
                             decoration: BoxDecoration(
-                                color: [
-                                  const Color(0xFF92AC7B),
-                                  const Color(0xFFE4B980),
-                                  const Color(0xFF96B8CA)
-                                ][i % 3],
+                                color: changes.cancelled
+                                    ? Colors.red.shade400
+                                    : changes.teacher
+                                        ? Colors.orange.shade500
+                                        : changes.room
+                                            ? Colors.blue.shade500
+                                            : [
+                                                const Color(0xFF92AC7B),
+                                                const Color(0xFFE4B980),
+                                                const Color(0xFF96B8CA)
+                                              ][i % 3],
                                 borderRadius: BorderRadius.circular(5))),
                         const SizedBox(width: 14),
                         Expanded(
@@ -682,17 +716,46 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                               Text(l.subject,
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                          decoration: changes.cancelled
+                                              ? TextDecoration.lineThrough
+                                              : null,
+                                          color: changes.cancelled
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant
+                                              : null)),
+                              if (changes.cancelled ||
+                                  changes.changed ||
+                                  changes.hasSpecificChange) ...[
+                                const SizedBox(height: 8),
+                                LessonChangeBadges(
+                                    controller: c, changes: changes),
+                              ],
                               const SizedBox(height: 4),
                               Text(l.teacher,
                                   style: Theme.of(context).textTheme.bodySmall),
+                              if (changes.teacher &&
+                                  changes.originalTeacher.isNotEmpty)
+                                Text(
+                                    '${t('Було', 'Previously', 'Bisher')}: ${changes.originalTeacher}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
                               if (l.room.isNotEmpty) ...[
                                 const SizedBox(height: 6),
                                 Text('${t('Каб.', 'Room', 'Raum')} ${l.room}',
                                     style:
                                         Theme.of(context).textTheme.bodySmall),
                               ],
+                              if (changes.room &&
+                                  changes.originalRoom.isNotEmpty)
+                                Text(
+                                    '${t('Було: каб.', 'Previously: room', 'Bisher: Raum')} ${changes.originalRoom}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
                             ])),
                       ])))));
     }

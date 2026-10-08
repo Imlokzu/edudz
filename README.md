@@ -24,6 +24,13 @@ refresh your data, or sign out.
 - Redesigned Today, Schedule, Tasks, Grades and Inbox screens.
 - Double lessons appear as separate 45-minute periods with their real numbers.
 - A live lesson/break countdown, lessons remaining, and school start/end times.
+- School breaks at 09:30–09:45, 11:15–11:30 and 13:00–14:00, with separate
+  free-time segments when lessons are cancelled or missing.
+- Published substitution, room/class/subject changes and Ausfall markers;
+  original teacher/room values are shown in rows and details. Cancelled lessons
+  stay visible and do not count as lessons to attend.
+- While open, the schedule refreshes about once a minute; open lesson details
+  follow the updated school data. Each tab retains its own scroll position.
 - The full day timetable with actual breaks and free periods between lessons.
 - After school, Today automatically shows the next actual school day, skipping
   weekends and holidays published by the school. Manual timetable browsing stays available.
@@ -62,6 +69,10 @@ Screenshots in `docs/screenshots/` use demo data only. Tablet example:
 
 ![Tablet lesson details](docs/screenshots/tablet-lesson.png)
 
+Published changes (demo example):
+
+![Tablet changes](docs/screenshots/tablet-changes-schedule.png)
+
 <p>
   <img src="docs/screenshots/today.png" width="220" alt="edudz Today screen, demo data">
   <img src="docs/screenshots/schedule.png" width="220" alt="edudz timetable, demo data">
@@ -97,12 +108,13 @@ are at `~/edupage2/server` and `~/edupage2/SETUP.md`.
 
 ## Validation
 
-32 widget/unit tests cover optional-school login, token school discovery, tablet
+40 widget/unit tests cover optional-school login, token school discovery, tablet
 master/detail navigation, e-test/attachment parsing, UTF-8 streaming, form validation,
 school-host normalization, secure storage,
 demo navigation, completing tasks, theme switching, sign-out and compact-screen
 layouts at enlarged text size, double lessons, exact bell boundaries, free periods,
-next-day/holiday selection, clock changes and topic lookup in a double lesson.
+next-day/holiday selection, clock changes, topic lookup in a double lesson,
+fixed breaks, cancellation counts/end times and cached change markers.
 Android integration tests live in `integration_test/`; the school-day scenario
 also captures demo screenshots on phone and tablet:
 

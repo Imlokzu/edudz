@@ -76,6 +76,7 @@ class SchoolController extends ChangeNotifier {
   bool _updatingDay = false;
   DateTime? _lastDayCheck;
   DateTime? _lastDayAttempt;
+  DateTime? _lastSnapshotAt;
   bool _disposed = false;
 
   DateTime get schoolNow => _serverWallTime == null
@@ -100,7 +101,7 @@ class SchoolController extends ChangeNotifier {
     }
     for (var offset = 1; offset <= 60; offset++) {
       final date = schoolCalendarDay(today, offset);
-      if (dayFor(date).classes.isNotEmpty) return date;
+      if (dayFor(date).classes.any((l) => !l.changes.cancelled)) return date;
     }
     return today;
   }
@@ -113,7 +114,7 @@ class SchoolController extends ChangeNotifier {
     clock.value = schoolNow;
     final state = schoolState;
     final key =
-        '${today.toIso8601String()}:${state.phase}:${state.current?.period}:${homeDate.toIso8601String()}';
+        '${today.toIso8601String()}:${state.phase}:${state.breakKind}:${state.endsAt}:${state.current?.period}:${homeDate.toIso8601String()}';
     if (key != _clockPhaseKey) {
       _clockPhaseKey = key;
       if (!_manualDate) selectedDate = homeDate;
@@ -124,13 +125,27 @@ class SchoolController extends ChangeNotifier {
         !loading &&
         (_lastDayAttempt == null ||
             _deviceNow().difference(_lastDayAttempt!).inSeconds >= 60) &&
-        (_lastDayCheck == null || !DateUtils.isSameDay(_lastDayCheck, today))) {
+        (_lastSnapshotAt == null ||
+            _deviceNow().difference(_lastSnapshotAt!).inSeconds >= 60 ||
+            !DateUtils.isSameDay(_lastDayCheck, today))) {
       _updatingDay = true;
       _lastDayAttempt = _deviceNow();
-      loadSchoolSnapshot().catchError((Object _) {}).whenComplete(() {
+      _updateSchoolSnapshot().catchError((Object _) {
+        if (_disposed || !authenticated) return;
+        final section = tr('розклад', 'timetable', 'Stundenplan');
+        if (!failedSections.contains(section)) {
+          failedSections.add(section);
+          notifyListeners();
+        }
+      }).whenComplete(() {
         _updatingDay = false;
       });
     }
+  }
+
+  Future<void> _updateSchoolSnapshot() async {
+    await ensureSession();
+    await loadSchoolSnapshot();
   }
 
   void showHomeDay() {
@@ -139,9 +154,12 @@ class SchoolController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadSchoolSnapshot() async {
+  Future<void> loadSchoolSnapshot({DateTime? date}) async {
     final token = data.user.token;
     final response = await data.dio.get('${data.baseUrl}/api/school-day',
+        queryParameters: date == null
+            ? null
+            : {'date': date.toIso8601String().split('T').first},
         options: Options(headers: {'Authorization': 'Bearer $token'}));
     if (_disposed || !authenticated || demo || data.user.token != token) return;
     final value = Map<String, dynamic>.from(response.data);
@@ -153,17 +171,25 @@ class SchoolController extends ChangeNotifier {
         .map((p) => TimeTablePeriod.fromJson(Map<String, dynamic>.from(p)))
         .toList();
     data.timetable.periods = periods;
+    final breaks = value['scheduled_breaks'] == null
+        ? defaultSchoolBreaks
+        : (value['scheduled_breaks'] as List)
+            .map((p) => SchoolBreak.fromJson(Map<String, dynamic>.from(p)))
+            .toList();
     for (final entry in (value['days'] as Map).entries) {
       final date = DateTime.parse(entry.key as String);
       final items = (entry.value as List)
           .map((item) =>
               TimeTableClass.fromJson(Map<String, dynamic>.from(item)))
           .toList();
-      data.timetable.timetables[DateUtils.dateOnly(date)] =
-          normalizeTimetable(TimeTableData(date, items, periods));
+      data.timetable.timetables[DateUtils.dateOnly(date)] = normalizeTimetable(
+          TimeTableData(date, items, periods, breaks: breaks));
     }
     await data.timetable.saveToCache();
+    if (_disposed || !authenticated || demo || data.user.token != token) return;
     _lastDayCheck = today;
+    _lastSnapshotAt = _deviceNow();
+    failedSections.remove(tr('розклад', 'timetable', 'Stundenplan'));
     if (!_manualDate) selectedDate = homeDate;
     clock.value = schoolNow;
     notifyListeners();
@@ -351,7 +377,7 @@ class SchoolController extends ChangeNotifier {
           () async {
             await loadSchoolSnapshot();
             if (!data.timetable.timetables.containsKey(selectedDate)) {
-              await data.timetable.loadTt(selectedDate);
+              await loadSchoolSnapshot(date: selectedDate);
             }
           }
         ),
@@ -399,6 +425,7 @@ class SchoolController extends ChangeNotifier {
     _receivedAt = null;
     _lastDayCheck = null;
     _lastDayAttempt = null;
+    _lastSnapshotAt = null;
     _clockPhaseKey = '';
     _manualDate = false;
     clock.value = schoolNow;
@@ -457,10 +484,32 @@ class SchoolController extends ChangeNotifier {
 
   List<LessonEntry> get lessons => _entries(dayFor(selectedDate));
 
+  LessonEntry? resolveLesson(LessonEntry? entry) {
+    final original = entry?.original;
+    final date = DateTime.tryParse(original?.date ?? '');
+    if (entry == null || original == null || date == null) return entry;
+    final matches = _entries(dayFor(date))
+        .where((l) =>
+            l.start == entry.start &&
+            l.original?.period == original.period &&
+            (l.original?.type == 'event') == (original.type == 'event'))
+        .toList();
+    if (matches.length == 1) return matches.single;
+    final active = matches
+        .where((l) =>
+            l.original?.changes.cancelled != true &&
+            (l.original?.subject?.id == original.subject?.id ||
+                l.original?.changes.originalSubject == entry.subject))
+        .toList();
+    return active.length == 1 ? active.single : entry;
+  }
+
   List<LessonEntry> _entries(TimeTableData day) => normalizeTimetable(day)
       .classes
       .map((l) => (
-            subject: l.subject?.name ?? '—',
+            subject: l.subject?.name.isNotEmpty == true
+                ? l.subject!.name
+                : tr('Урок', 'Lesson', 'Stunde'),
             start: l.startTime,
             end: l.endTime,
             room: l.classrooms.map((r) => r.name).join(', '),
