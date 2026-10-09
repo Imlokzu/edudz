@@ -2,14 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:edudz/api.dart' show LessonChanges;
-import 'package:edudz/message.dart';
-import 'package:flutter_session_manager/flutter_session_manager.dart';
 import 'controller.dart';
 import 'theme.dart';
 import 'details.dart';
 import 'assistant.dart';
 import 'school_day.dart';
 import 'lesson_changes.dart';
+import 'message_detail.dart';
 
 class EdudzShell extends StatefulWidget {
   const EdudzShell({super.key, required this.controller});
@@ -24,6 +23,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
   bool showDone = false;
   TaskEntry? selectedTask;
   LessonEntry? selectedLesson;
+  MessageEntry? selectedMessage;
   SchoolController get c => widget.controller;
   String t(String uk, String en, [String? de]) => c.tr(uk, en, de);
   String date(DateTime value, [String pattern = 'd MMM']) =>
@@ -66,6 +66,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
       tab = value;
       selectedTask = null;
       selectedLesson = null;
+      selectedMessage = null;
     });
   }
 
@@ -222,22 +223,34 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
                 const VerticalDivider(width: 1),
                 Expanded(child: content),
                 if (layout.maxWidth >= 1000 &&
-                    (selectedTask != null || selectedLesson != null)) ...[
+                    (selectedTask != null ||
+                        selectedLesson != null ||
+                        selectedMessage != null)) ...[
                   const VerticalDivider(width: 1),
                   SizedBox(
-                      width: layout.maxWidth >= 1300 ? 420 : 360,
+                      width: selectedMessage != null
+                          ? (layout.maxWidth >= 1300 ? 570 : 440)
+                          : layout.maxWidth >= 1300
+                              ? 420
+                              : 360,
                       child: SafeArea(
-                          child: DetailPane(
-                        controller: c,
-                        task: selectedTask,
-                        lesson: selectedLesson,
-                        onClose: () => setState(() {
-                          selectedTask = null;
-                          selectedLesson = null;
-                        }),
-                        onAsk: (prompt, task) =>
-                            _assistant(prompt: prompt, task: task),
-                      ))),
+                          child: selectedMessage != null
+                              ? MessagePane(
+                                  controller: c,
+                                  message: selectedMessage!,
+                                  onClose: () =>
+                                      setState(() => selectedMessage = null))
+                              : DetailPane(
+                                  controller: c,
+                                  task: selectedTask,
+                                  lesson: selectedLesson,
+                                  onClose: () => setState(() {
+                                    selectedTask = null;
+                                    selectedLesson = null;
+                                  }),
+                                  onAsk: (prompt, task) =>
+                                      _assistant(prompt: prompt, task: task),
+                                ))),
                 ],
               ])
             : content,
@@ -862,6 +875,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
   void _taskDetail(TaskEntry task) {
     if (MediaQuery.sizeOf(context).width >= 1000) {
       setState(() {
+        selectedMessage = null;
         selectedTask = task;
         selectedLesson = null;
       });
@@ -880,6 +894,7 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
   void _lessonDetail(LessonEntry lesson) {
     if (MediaQuery.sizeOf(context).width >= 1000) {
       setState(() {
+        selectedMessage = null;
         selectedLesson = lesson;
         selectedTask = null;
       });
@@ -962,35 +977,18 @@ class _EdudzShellState extends State<EdudzShell> with WidgetsBindingObserver {
             padding: const EdgeInsets.only(bottom: 12),
             child: Surface(
                 onTap: () {
-                  final id = int.tryParse(m.original?.id ?? '');
-                  if (id != null) {
+                  if (MediaQuery.sizeOf(context).width >= 1000) {
+                    setState(() {
+                      selectedMessage = m;
+                      selectedTask = null;
+                      selectedLesson = null;
+                    });
+                  } else {
                     Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => MessagePage(
-                                sessionManager: SessionManager(),
-                                id: id,
-                                date: m.date)));
-                  } else {
-                    showModalBottomSheet(
-                        context: context,
-                        showDragHandle: true,
-                        isScrollControlled: true,
-                        builder: (context) => SafeArea(
-                            child: SingleChildScrollView(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(m.sender,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge),
-                                      const SizedBox(height: 18),
-                                      SelectableText(m.title)
-                                    ]))));
+                            builder: (_) =>
+                                MessageScreen(controller: c, message: m)));
                   }
                 },
                 child: Padding(

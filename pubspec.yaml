@@ -1,7 +1,7 @@
 name: edudz
 description: edudz — your school day, beautifully simple. Self-hosted EduPage client.
 publish_to: none
-version: 2.3.0+31
+version: 2.4.0+32
 environment:
   sdk: ^3.2.0
 dependencies:
@@ -29,6 +29,9 @@ dependencies:
   toastification: ^3.0.3
   auto_size_text: ^3.0.0
   introduction_screen: ^4.0.0
+  flutter_widget_from_html_core: ^0.17.4
+  html: ^0.15.6
+  webview_flutter: ^4.14.1
 dev_dependencies:
   integration_test:
     sdk: flutter
@@ -39,6 +42,7 @@ flutter:
   assets:
     - assets/EduPage2/png/logo-no-background.png
     - assets/demo/
+    - assets/document-preview/
   fonts:
     - family: Manrope
       fonts:

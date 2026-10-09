@@ -36,7 +36,15 @@ refresh your data, or sign out.
   weekends and holidays published by the school. Manual timetable browsing stays available.
 - Tablet navigation rail and a detail panel beside the timetable/homework list.
 - Tap lessons for the room, teachers, class/group, published topic and related tasks.
-- Full homework material cards, PDF/image/text previews and Office text previews.
+- Formatted teacher messages and homework instructions, with lists, tables,
+  authenticated inline school images, attachments and replies.
+- A message panel beside the inbox on tablets, and a full message screen on phones.
+- Local DOCX, XLSX/XLS, ODS, CSV and PPTX previews: pages, tables, sheets, images
+  and slides. PDF/image/text previews and original downloads stay inside edudz.
+- Page/sheet navigation and zoom; downloaded documents remain viewable offline.
+  Rendering happens entirely on the device, without a conversion server or an
+  external Office viewer. Advanced Office layout/fonts and animations may differ;
+  unsupported formats keep the original download option.
 - Save original attachments directly to Android Downloads/edudz (Android 10+);
   Android 7–9 uses the system save dialog. No school website redirect.
 - A streaming school assistant with authenticated read tools for schedules,
@@ -50,7 +58,7 @@ refresh your data, or sign out.
 - Independent refresh errors; a failed section doesn't discard the other data.
 - Task checkmarks are local to the device; they do not submit work to EduPage.
 - Grade values retain the school's scale.
-- Existing EduPage2 message details, attachment and reply support remain available.
+- Teacher message attachments and reply history use the same in-app viewers as homework.
 
 ## Assistant
 
@@ -68,6 +76,16 @@ model provider via our own backend. Our current server uses NVIDIA NIM; see
 Screenshots in `docs/screenshots/` use demo data only. Tablet example:
 
 ![Tablet lesson details](docs/screenshots/tablet-lesson.png)
+
+Teacher messages and local documents (demo examples):
+
+![Tablet teacher message](docs/screenshots/tablet-teacher-message.png)
+
+<p>
+  <img src="docs/screenshots/document-word.png" width="220" alt="Word document rendered on the device">
+  <img src="docs/screenshots/document-excel.png" width="220" alt="Excel sheet rendered on the device">
+  <img src="docs/screenshots/document-powerpoint.png" width="220" alt="PowerPoint slides rendered on the device">
+</p>
 
 Published changes (demo example):
 
@@ -95,6 +113,9 @@ these files are never committed. For your own builds, generate your own release
 keystore and set `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`.
 The original installation's signing key is preserved locally for our releases.
 
+Local Office rendering dependencies are bundled with their licenses. See
+[the preview build instructions](assets/document-preview/README.md).
+
 The backend URL may be set at compile time:
 
 ```sh
@@ -108,13 +129,14 @@ are at `~/edupage2/server` and `~/edupage2/SETUP.md`.
 
 ## Validation
 
-40 widget/unit tests cover optional-school login, token school discovery, tablet
+47 widget/unit tests cover optional-school login, token school discovery, tablet
 master/detail navigation, e-test/attachment parsing, UTF-8 streaming, form validation,
 school-host normalization, secure storage,
 demo navigation, completing tasks, theme switching, sign-out and compact-screen
 layouts at enlarged text size, double lessons, exact bell boundaries, free periods,
 next-day/holiday selection, clock changes, topic lookup in a double lesson,
-fixed breaks, cancellation counts/end times and cached change markers.
+fixed breaks, cancellation counts/end times, cached change markers, rich-message
+parsing, safe formatted content, MIME handling and message layouts with large text.
 Android integration tests live in `integration_test/`; the school-day scenario
 also captures demo screenshots on phone and tablet:
 

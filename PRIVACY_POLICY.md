@@ -29,4 +29,7 @@ The model API's own data policies apply. The assistant has read-only school tool
 
 Downloaded attachment copies are cached in the app's private temporary directory.
 Files explicitly saved to Downloads remain on the device after sign-out or app
-removal. Office previews show text, not the document's full original layout.
+removal. Office previews run on the device using bundled rendering code. Files
+are not uploaded to Microsoft, Google, or a document-conversion service. After a
+file is downloaded, supported document previews work without internet. Rendering
+scripts have no access to school credentials and block external document requests.

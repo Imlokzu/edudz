@@ -1,20 +1,48 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:xml/xml.dart';
 import 'controller.dart';
 
 class SchoolFile {
   const SchoolFile({required this.src, required this.name, this.mime = ''});
   final String src, name, mime;
+  bool get isOffice => const [
+        'docx',
+        'doc',
+        'xlsx',
+        'xls',
+        'pptx',
+        'ppt',
+        'odt',
+        'ods',
+        'odp',
+        'rtf'
+      ].contains(extension);
+  bool get isImage =>
+      const ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'].contains(extension);
   String get extension {
-    final parts = name.split('.');
+    final parts = name.split('?').first.split('.');
     if (parts.length > 1) return parts.last.toLowerCase();
-    final type = mime.toLowerCase();
+    final type = mime.toLowerCase().split(';').first;
+    const types = {
+      'application/pdf': 'pdf',
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+          'docx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+          'xlsx',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+          'pptx',
+      'application/msword': 'doc',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.ms-powerpoint': 'ppt'
+    };
+    if (types.containsKey(type)) return types[type]!;
     if ([
       'pdf',
       'png',
@@ -47,7 +75,7 @@ class SchoolFile {
     if (value is Map) {
       if (value.containsKey('src') || value.containsKey('url')) {
         add(value['src'] ?? value['url'], value['name'] ?? value['filename'],
-            value['type']);
+            value['type'] ?? value['mime'] ?? value['contentType']);
       } else {
         for (final e in value.entries) {
           add(e.key, e.value);
@@ -63,8 +91,9 @@ class SchoolFile {
 }
 
 class StudyBlock {
-  const StudyBlock({required this.text, this.files = const []});
+  const StudyBlock({required this.text, this.files = const [], this.html});
   final String text;
+  final String? html;
   final List<SchoolFile> files;
 }
 
@@ -102,7 +131,10 @@ List<StudyBlock> studyBlocks(Map<String, dynamic> value) {
           .toString());
       final files = SchoolFile.parse(props['files']);
       if (text.isNotEmpty || files.isNotEmpty) {
-        result.add(StudyBlock(text: text, files: files));
+        result.add(StudyBlock(
+            text: text,
+            files: files,
+            html: (props['_parsedHtmlText'] ?? props['htmlText'])?.toString()));
       }
     }
   }
@@ -177,34 +209,14 @@ class FileService {
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'pptx' =>
           'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'doc' => 'application/msword',
+        'xls' => 'application/vnd.ms-excel',
+        'ppt' => 'application/vnd.ms-powerpoint',
+        'odt' => 'application/vnd.oasis.opendocument.text',
+        'ods' => 'application/vnd.oasis.opendocument.spreadsheet',
+        'odp' => 'application/vnd.oasis.opendocument.presentation',
+        'rtf' => 'application/rtf',
         'txt' || 'csv' => 'text/plain',
         _ => 'application/octet-stream',
       };
-}
-
-String officeText(Uint8List bytes, String extension) {
-  final archive = ZipDecoder().decodeBytes(bytes);
-  final output = <String>[];
-  for (final file in archive.files) {
-    final relevant = switch (extension) {
-      'docx' => file.name == 'word/document.xml',
-      'pptx' => RegExp(r'^ppt/slides/slide\d+\.xml$').hasMatch(file.name),
-      'xlsx' => file.name == 'xl/sharedStrings.xml',
-      _ => false,
-    };
-    if (!relevant || !file.isFile || file.size > 8 * 1024 * 1024) continue;
-    final doc = XmlDocument.parse(utf8.decode(file.content as List<int>));
-    final paragraphs = doc.descendants
-        .whereType<XmlElement>()
-        .where((e) => e.name.local == (extension == 'xlsx' ? 'si' : 'p'));
-    for (final p in paragraphs) {
-      final text = p.descendants
-          .whereType<XmlElement>()
-          .where((e) => e.name.local == 't')
-          .map((e) => e.innerText)
-          .join();
-      if (text.isNotEmpty) output.add(text);
-    }
-  }
-  return output.join('\n\n');
 }

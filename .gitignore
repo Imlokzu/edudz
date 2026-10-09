@@ -53,3 +53,9 @@ app.*.map.json
 **/GoogleService-Info.plist
 .env*
 releases/*.apk
+
+# Local bundled document preview build tools
+tools/document-preview/node_modules/
+
+# Kotlin compiler local cache
+/android/.kotlin/
